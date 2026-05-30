@@ -207,7 +207,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 	var firstErr error
 
 	if a.httpServer != nil {
-		if err := a.httpServer.Shutdown(); err != nil && firstErr == nil {
+		if err := a.httpServer.Shutdown(ctx); err != nil && firstErr == nil {
 			firstErr = err
 		}
 		slog.Info("http server stopped")

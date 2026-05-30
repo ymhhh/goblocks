@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -120,17 +121,17 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Shutdown gracefully stops all HTTP listeners.
-func (s *Server) Shutdown() error {
+// Shutdown gracefully stops all HTTP listeners, waiting for in-flight requests until ctx expires.
+func (s *Server) Shutdown(ctx context.Context) error {
 	var firstErr error
 
 	if s.httpSrv != nil {
-		if err := s.httpSrv.Close(); err != nil && firstErr == nil {
+		if err := s.httpSrv.Shutdown(ctx); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
 	if s.h3Srv != nil {
-		if err := s.h3Srv.Close(); err != nil && firstErr == nil {
+		if err := s.h3Srv.Shutdown(ctx); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
