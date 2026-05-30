@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -32,10 +33,10 @@ type H3Options struct {
 
 // Server wraps Gin with HTTP/1, HTTP/2, and optional HTTP/3 support.
 type Server struct {
-	engine   *gin.Engine
-	config   Config
-	httpSrv  *http.Server
-	h3Srv    *http3.Server
+	engine    *gin.Engine
+	config    Config
+	httpSrv   *http.Server
+	h3Srv     *http3.Server
 	tlsConfig *tls.Config
 }
 
@@ -57,17 +58,20 @@ func (s *Server) Engine() *gin.Engine {
 }
 
 // Start begins listening for HTTP/1, HTTP/2 (with TLS), and optionally HTTP/3.
-func (s *Server) Start() error {
+// It returns a channel that receives unexpected server errors. Listen failures
+// are returned synchronously.
+func (s *Server) Start() (<-chan error, error) {
 	if s.config.Addr == "" {
 		s.config.Addr = ":8080"
 	}
 
 	handler := s.engine
+	errCh := make(chan error, 2)
 
 	if s.config.TLS.Enabled {
 		cert, err := tls.LoadX509KeyPair(s.config.TLS.CertFile, s.config.TLS.KeyFile)
 		if err != nil {
-			return fmt.Errorf("load tls cert: %w", err)
+			return nil, fmt.Errorf("load tls cert: %w", err)
 		}
 		s.tlsConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
@@ -79,6 +83,17 @@ func (s *Server) Start() error {
 			TLSConfig: s.tlsConfig,
 		}
 
+		lis, err := net.Listen("tcp", s.config.Addr)
+		if err != nil {
+			return nil, fmt.Errorf("listen http: %w", err)
+		}
+
+		go func() {
+			if err := s.httpSrv.ServeTLS(lis, "", ""); err != nil && err != http.ErrServerClosed {
+				errCh <- fmt.Errorf("http server: %w", err)
+			}
+		}()
+
 		if s.config.H3.Enabled {
 			h3Addr := s.config.H3.Addr
 			if h3Addr == "" {
@@ -89,22 +104,19 @@ func (s *Server) Start() error {
 				Handler:   handler,
 				TLSConfig: s.tlsConfig,
 			}
-		}
-
-		go func() {
-			if err := s.httpSrv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				panic(fmt.Sprintf("http server: %v", err))
-			}
-		}()
-
-		if s.h3Srv != nil {
 			go func() {
 				if err := s.h3Srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					panic(fmt.Sprintf("http3 server: %v", err))
+					errCh <- fmt.Errorf("http3 server: %w", err)
 				}
 			}()
 		}
-		return nil
+
+		return errCh, nil
+	}
+
+	lis, err := net.Listen("tcp", s.config.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("listen http: %w", err)
 	}
 
 	s.httpSrv = &http.Server{
@@ -113,12 +125,12 @@ func (s *Server) Start() error {
 	}
 
 	go func() {
-		if err := s.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(fmt.Sprintf("http server: %v", err))
+		if err := s.httpSrv.Serve(lis); err != nil && err != http.ErrServerClosed {
+			errCh <- fmt.Errorf("http server: %w", err)
 		}
 	}()
 
-	return nil
+	return errCh, nil
 }
 
 // Shutdown gracefully stops all HTTP listeners, waiting for in-flight requests until ctx expires.

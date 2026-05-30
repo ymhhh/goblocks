@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -148,10 +149,23 @@ func (a *App) Run(ctx context.Context) error {
 			},
 		})
 
-		if err := a.httpServer.Start(); err != nil {
+		httpErrCh, err := a.httpServer.Start()
+		if err != nil {
 			return fmt.Errorf("start http: %w", err)
 		}
 		slog.Info("http server started", "addr", a.httpServer.Addr())
+
+		g.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case err, ok := <-httpErrCh:
+				if !ok {
+					return nil
+				}
+				return err
+			}
+		})
 	}
 
 	if a.cfg.Server.GRPC.Enabled {
@@ -174,10 +188,23 @@ func (a *App) Run(ctx context.Context) error {
 		}, opts...)
 		a.grpcRegister(a.grpcServer.GRPCServer(), a.policy)
 
-		if err := a.grpcServer.Start(); err != nil {
+		grpcErrCh, err := a.grpcServer.Start()
+		if err != nil {
 			return fmt.Errorf("start grpc: %w", err)
 		}
 		slog.Info("grpc server started", "addr", a.grpcServer.Addr())
+
+		g.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case err, ok := <-grpcErrCh:
+				if !ok {
+					return nil
+				}
+				return err
+			}
+		})
 	}
 
 	sigCh := make(chan os.Signal, 1)
@@ -199,7 +226,11 @@ func (a *App) Run(ctx context.Context) error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
-	return a.Shutdown(shutdownCtx)
+	shutdownErr := a.Shutdown(shutdownCtx)
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
+		return err
+	}
+	return shutdownErr
 }
 
 // Shutdown gracefully stops all servers.

@@ -33,24 +33,27 @@ func (s *Server) GRPCServer() *grpc.Server {
 }
 
 // Start begins listening for gRPC connections.
-func (s *Server) Start() error {
+// It returns a channel that receives unexpected server errors. Listen failures
+// are returned synchronously.
+func (s *Server) Start() (<-chan error, error) {
 	if s.config.Addr == "" {
 		s.config.Addr = ":9090"
 	}
 
 	lis, err := net.Listen("tcp", s.config.Addr)
 	if err != nil {
-		return fmt.Errorf("listen grpc: %w", err)
+		return nil, fmt.Errorf("listen grpc: %w", err)
 	}
 	s.lis = lis
 
+	errCh := make(chan error, 1)
 	go func() {
 		if err := s.server.Serve(lis); err != nil {
-			panic(fmt.Sprintf("grpc server: %v", err))
+			errCh <- fmt.Errorf("grpc server: %w", err)
 		}
 	}()
 
-	return nil
+	return errCh, nil
 }
 
 // Shutdown gracefully stops the gRPC server.
