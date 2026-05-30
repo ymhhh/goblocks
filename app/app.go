@@ -40,8 +40,10 @@ type App struct {
 	grpcServer    *gblocksgrpc.Server
 	metricsServer *metrics.Server
 	aiClient      ai.Client
-	httpRegister HTTPRegisterFunc
-	grpcRegister GRPCRegisterFunc
+	httpRegister  HTTPRegisterFunc
+	grpcRegister  GRPCRegisterFunc
+	httpTracing   []gin.HandlerFunc
+	grpcTracing   []grpc.ServerOption
 }
 
 // New creates a new App from configuration.
@@ -129,6 +131,9 @@ func (a *App) Run(ctx context.Context) error {
 		if a.metrics != nil {
 			engine.Use(a.metrics.HTTPMiddleware())
 		}
+		for _, mw := range a.httpTracing {
+			engine.Use(mw)
+		}
 		engine.Use(httpmiddleware.ResilienceWithBreaker(a.policy, a.metrics))
 		a.httpRegister(engine, a.policy)
 		registerHealthRoutes(engine, a)
@@ -214,9 +219,8 @@ func (a *App) Run(ctx context.Context) error {
 			interceptors = append([]grpc.UnaryServerInterceptor{a.metrics.GRPCUnaryServerInterceptor()}, interceptors...)
 		}
 
-		opts := []grpc.ServerOption{
-			grpc.ChainUnaryInterceptor(interceptors...),
-		}
+		opts := append([]grpc.ServerOption{}, a.grpcTracing...)
+		opts = append(opts, grpc.ChainUnaryInterceptor(interceptors...))
 		a.grpcServer = gblocksgrpc.NewServer(gblocksgrpc.Config{
 			Addr: a.cfg.Server.GRPC.Addr,
 		}, opts...)
