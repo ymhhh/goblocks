@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.2.2] - 2026-05-30
+
+### Added
+
+- Optional `/health` and `/ready` probes (`server.http.health`)
+- Dedicated metrics listener (`metrics.addr`) and Bearer auth (`metrics.auth_token`)
+- Configurable breaker `consecutive_failures`
+- Optional tracing hooks: `WithHTTPTracing`, `WithGRPCTracing`
+- `examples/minimal` runnable HTTP-only example
+- Documentation: tracing, grpc-gateway, API stability policy
+
+### Changed
+
+- Go module minimum version set to 1.22 (CI matrix: 1.22 / 1.23)
+
 ## [v0.2.1] - 2026-05-30
 
 ### Added
