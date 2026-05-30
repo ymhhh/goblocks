@@ -14,6 +14,7 @@ Goblocks 是 Go 语言服务端框架，提供 HTTP（H1/H2/H3）、gRPC、OpenA
 | [包 API 参考](packages.md) | `app`、`http`、`grpc`、`ai`、`resilience` 使用说明 |
 | [观测指标](metrics.md) | Prometheus 指标说明与 PromQL 示例 |
 | [分布式追踪](tracing.md) | OpenTelemetry 可选 hook |
+| [grpc-gateway](grpc-gateway.md) | REST 网关集成指南（可选） |
 | [开发指南](development.md) | 框架开发、测试与发布 |
 
 ## 快速链接
