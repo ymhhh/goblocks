@@ -22,10 +22,10 @@
 |-----|-----|----------|
 | `http/middleware.GlobalRateLimit` | L1 | `app.Run` 默认 |
 | `http/middleware.UserRateLimit` | L2 | 业务 `infrastructure` |
-| `http/middleware.RouteRateLimit` | L3 | 业务路由组 |
+| `http/middleware.RouteRateLimit` | L3 | `app.Run`（config 有 `routes` 时） |
 | `grpc/interceptors.UnaryServerInterceptor` | L1 | `app.Run` 默认 |
 | `grpc/interceptors.UserUnaryServerInterceptor` | L2 | 业务 infrastructure |
-| `grpc/interceptors.RouteUnaryServerInterceptor` | L3 | 业务 infrastructure |
+| `grpc/interceptors.RouteUnaryServerInterceptor` | L3 | `app.Run`（config 有 `routes` 时） |
 
 配置 `resilience.rate_limit` 新增 `global` / `user` / `routes` / `backend`；顶层 `rps`/`burst` 仍兼容。
 

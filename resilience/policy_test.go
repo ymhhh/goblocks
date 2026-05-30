@@ -76,6 +76,27 @@ func TestBreakerOpensAfterFailures(t *testing.T) {
 	}
 }
 
+func TestPolicyAllowRoute(t *testing.T) {
+	p := &Policy{
+		RateLimits: RateLimits{
+			Backend: NewMemoryRateLimiter(),
+			RouteRules: map[string]LimitRule{
+				"POST:/ai/chat": {RPS: 1, Burst: 1},
+			},
+		},
+	}
+
+	if err := p.AllowRoute(t.Context(), "POST", "/ai/chat"); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.AllowRoute(t.Context(), "POST", "/ai/chat"); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("expected ErrRateLimited, got %v", err)
+	}
+	if err := p.AllowRoute(t.Context(), "GET", "/other"); err != nil {
+		t.Fatalf("unconfigured route should pass, got %v", err)
+	}
+}
+
 func TestNilPolicy(t *testing.T) {
 	var p *Policy
 	if err := p.Allow(); err != nil {

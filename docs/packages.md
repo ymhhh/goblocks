@@ -114,7 +114,7 @@ engine.Use(httpmiddleware.RouteRateLimit(policy, metrics)) // L3
 engine.Use(httpmiddleware.RateLimitByKey(keyFn, rule, scope, policy, metrics))
 ```
 
-`app.App` 默认挂载 `GlobalRateLimit` + `BreakerCheck`。
+`app.App` 默认挂载 `GlobalRateLimit` + `BreakerCheck`；config 存在 `routes` 时自动挂载 `RouteRateLimit`。
 
 ---
 
@@ -254,10 +254,9 @@ func (a *App) registerHTTP(engine *gin.Engine, policy *resilience.Policy) {
         a.getUserHandler,
     )
 
-    // L3：昂贵 API 路由组
-    ai := engine.Group("/ai")
-    ai.Use(httpmiddleware.RouteRateLimit(policy, nil))
-    ai.POST("/chat", a.AIHandler.Chat)
+    // L3：在 config resilience.rate_limit.routes 中配置，app.Run 自动挂载
+
+    engine.POST("/ai/chat", a.AIHandler.Chat)
 }
 
 func Run(configPath string) error {
@@ -276,7 +275,7 @@ func Run(configPath string) error {
 // infrastructure/grpc_server.go — L2 需 metadata x-user-id
 func (a *App) registerGRPC(server *grpc.Server, policy *resilience.Policy) {
     _ = policy
-    // app 已挂 L1；追加 L2/L3 见 grpc ChainUnaryInterceptor 示例
+    // app 已挂 L1 + L3（config routes）；L2 需 metadata x-user-id 并链式挂载 UserUnaryServerInterceptor
 }
 ```
 

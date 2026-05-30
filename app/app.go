@@ -139,6 +139,9 @@ func (a *App) Run(ctx context.Context) error {
 		}
 		engine.Use(httpmiddleware.GlobalRateLimit(a.policy, a.metrics))
 		engine.Use(httpmiddleware.BreakerCheck(a.policy, a.metrics))
+		if len(a.policy.RateLimits.RouteRules) > 0 {
+			engine.Use(httpmiddleware.RouteRateLimit(a.policy, a.metrics))
+		}
 		a.httpRegister(engine, a.policy)
 		registerHealthRoutes(engine, a)
 
@@ -218,6 +221,9 @@ func (a *App) Run(ctx context.Context) error {
 
 		interceptors := []grpc.UnaryServerInterceptor{
 			grpcinterceptors.UnaryServerInterceptor(a.policy, a.metrics),
+		}
+		if len(a.policy.RateLimits.RouteRules) > 0 {
+			interceptors = append(interceptors, grpcinterceptors.RouteUnaryServerInterceptor(a.policy, a.metrics))
 		}
 		if a.metrics != nil {
 			interceptors = append([]grpc.UnaryServerInterceptor{a.metrics.GRPCUnaryServerInterceptor()}, interceptors...)

@@ -1,7 +1,6 @@
 // Package app orchestrates HTTP, gRPC, AI client, and graceful shutdown.
 //
-// Run mounts framework middleware only: Recovery, metrics, tracing (optional),
-// L1 GlobalRateLimit, and BreakerCheck. L2 user and L3 route rate limits are
-// not mounted here; register them in WithHTTP/WithGRPC callbacks from
-// business infrastructure after authentication.
+// Run mounts framework middleware: Recovery, metrics, tracing (optional),
+// L1 GlobalRateLimit, BreakerCheck, and L3 RouteRateLimit when config routes exist.
+// L2 user rate limits are registered in WithHTTP/WithGRPC from business infrastructure.
 package app

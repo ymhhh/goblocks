@@ -111,7 +111,7 @@ logger:
 
 ### rate_limit（分层限流）
 
-三层限流模型：**L1 全局（服务/集群）→ L2 用户 → L3 路由/API**。框架 `app` 默认仅挂载 **L1**；L2/L3 在业务 `infrastructure/registerHTTP` 中按鉴权与路由组挂载（见 [架构设计](architecture.md)）。
+三层限流模型：**L1 全局（服务/集群）→ L2 用户 → L3 路由/API**。框架 `app` 默认挂载 **L1** 与 **L3（config 配置了 `routes` 时）**；L2 在业务 `infrastructure/registerHTTP` 中挂载。
 
 后端：`memory`（单进程/开发）或 `redis`（多 Pod 分布式，基于 GCRA）。
 

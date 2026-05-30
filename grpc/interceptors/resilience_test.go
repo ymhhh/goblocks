@@ -66,6 +66,37 @@ func TestUnaryServerInterceptorNilPolicy(t *testing.T) {
 	}
 }
 
+func TestRouteUnaryServerInterceptor(t *testing.T) {
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend: resilience.NewMemoryRateLimiter(),
+			RouteRules: map[string]resilience.LimitRule{
+				"GRPC:/test.Echo": {RPS: 1, Burst: 1},
+			},
+		},
+	}
+	interceptor := RouteUnaryServerInterceptor(policy, nil)
+	handler := func(ctx context.Context, req any) (any, error) {
+		return "ok", nil
+	}
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Echo"}
+
+	_, err := interceptor(context.Background(), nil, info, handler)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = interceptor(context.Background(), nil, info, handler)
+	if status.Code(err) != codes.ResourceExhausted {
+		t.Fatalf("expected ResourceExhausted, got %v", err)
+	}
+
+	infoOther := &grpc.UnaryServerInfo{FullMethod: "/test.Other"}
+	_, err = interceptor(context.Background(), nil, infoOther, handler)
+	if err != nil {
+		t.Fatalf("unconfigured method should pass, got %v", err)
+	}
+}
+
 func TestUnaryClientInterceptor(t *testing.T) {
 	policy := resilience.NewPolicy(nil, nil)
 	interceptor := UnaryClientInterceptor(policy, nil)

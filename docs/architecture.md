@@ -107,7 +107,7 @@ sequenceDiagram
   end
 ```
 
-框架 `app.Run` 默认挂载 **L1 + 熔断检查**；L2/L3 由 `infrastructure/registerHTTP` 在鉴权之后、路由组上挂载。
+框架 `app.Run` 默认挂载 **L1 + 熔断 + L3（当 config 配置了 `routes`）**；L2 由 `infrastructure/registerHTTP` 在鉴权之后挂载。
 
 ## 分层限流：目录与职责
 
@@ -119,7 +119,7 @@ sequenceDiagram
 |--------|------|------------------|-----------|----------|
 | **L1 全局** | 保护服务/集群 | `global` 或 `global:{service}` | `resilience/` + `http/middleware/ratelimit.go`（`GlobalRateLimit`）+ `grpc/interceptors/resilience.go`（`UnaryServerInterceptor`） | **是**（`app.Run`） |
 | **L2 用户** | 公平配额 | `user:{userId}` | 同上（`UserRateLimit` / `UserUnaryServerInterceptor`）+ `resilience/keyed.go` | 否 |
-| **L3 路由** | 昂贵 API 控流 | `route:{METHOD}:{path}` | 同上（`RouteRateLimit` / `RateLimitByKey` / `RouteUnaryServerInterceptor`） | 否 |
+| **L3 路由** | 昂贵 API 控流 | `route:{METHOD}:{path}` | 同上（`RouteRateLimit` / `RouteUnaryServerInterceptor`） | **是**（config 有 `routes` 时） |
 
 ```
 goblocks/
@@ -146,7 +146,7 @@ goblocks/
 
 | 目录 | 限流相关职责 |
 |------|--------------|
-| `infrastructure/run.go` | `registerHTTP` 内：鉴权 → `UserRateLimit` → 路由组 `RouteRateLimit` |
+| `infrastructure/run.go` | `registerHTTP` 内：鉴权 → `UserRateLimit`（L2）；L3 由 config `routes` 驱动，`app` 自动挂载 |
 | `handlers/` | 通过 context 传递 userId；**不**手写 `Allow()` |
 | `domain/` / `core/` | **不** import HTTP、goblocks、限流 |
 
