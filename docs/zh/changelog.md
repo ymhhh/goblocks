@@ -2,12 +2,19 @@
 
 完整英文记录见 [CHANGELOG.md](../../CHANGELOG.md)。
 
-## v0.3.1（未发布）
+## v0.3.1 — 2026-05-30
+
+### 新增
+
+- `app.Run` 在 config 配置 `resilience.rate_limit.routes` 时**自动挂载 L3**
+- 完整中文文档 `docs/zh/`
+- Tracing 文档：`logger.LFromContext` 关联 trace_id / span_id
+- 扩展单测：L3 集成、tracing、HTTP/gRPC 限流中间件
 
 ### 变更
 
-- `app.Run` 在 config 配置 `resilience.rate_limit.routes` 时**自动挂载 L3**（HTTP `RouteRateLimit`、gRPC `RouteUnaryServerInterceptor`）
-- 补充 L3 单元测试与中文文档
+- 文档：L3 挂载语义、中英文交叉链接
+- 依赖：升级 go-common（`LFromContext`）
 
 ## v0.3.0 — 2026-05-30
 

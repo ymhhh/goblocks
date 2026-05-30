@@ -9,12 +9,14 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Auto-mount L3 `RouteRateLimit` / `RouteUnaryServerInterceptor` when `resilience.rate_limit.routes` is configured
-- L3 tests: `http/middleware/ratelimit_test.go`, `TestPolicyAllowRoute`, `TestRouteUnaryServerInterceptor`
-- Chinese documentation under `docs/zh/` (quickstart, rate limiting guide, changelog summary)
+- Chinese documentation under `docs/zh/` (full translations of architecture, configuration, packages, metrics, tracing, etc.)
+- Tracing docs: trace-log correlation via `logger.LFromContext` (go-common)
+- Tests: L3 app auto-mount integration, tracing/`LFromContext`, HTTP L1/L2/L3 middleware, gRPC user interceptor, resilience key/factory helpers
 
 ### Changed
 
-- Documentation: L3 mounting semantics, HTTP middleware order, configuration `routes` section
+- Documentation: L3 mounting semantics, HTTP middleware order, configuration `routes` section, bilingual cross-links
+- Dependency: bump `github.com/ymhhh/go-common` for `logger.LFromContext`
 
 ## [v0.3.0] - 2026-05-30
 
