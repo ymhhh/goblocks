@@ -27,11 +27,12 @@ func NewPolicyFromConfig(cfg config.ResilienceConfig, opts ...PolicyOption) *Pol
 	}
 
 	breaker := NewBreaker(BreakerSettings{
-		Name:            "default",
-		MaxRequests:     cfg.Breaker.MaxRequests,
-		Interval:        cfg.Breaker.Interval,
-		Timeout:         cfg.Breaker.Timeout,
-		OnStateChange:   build.onBreakerStateChange,
+		Name:                "default",
+		MaxRequests:         cfg.Breaker.MaxRequests,
+		ConsecutiveFailures: cfg.Breaker.ConsecutiveFailures,
+		Interval:            cfg.Breaker.Interval,
+		Timeout:             cfg.Breaker.Timeout,
+		OnStateChange:       build.onBreakerStateChange,
 	})
 	limiter := NewLimiter(cfg.RateLimit.RPS, cfg.RateLimit.Burst)
 	return NewPolicy(breaker, limiter)

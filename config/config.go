@@ -69,9 +69,10 @@ type ResilienceConfig struct {
 
 // BreakerConfig holds circuit breaker settings.
 type BreakerConfig struct {
-	MaxRequests uint32        `yaml:"max_requests" json:"max_requests"`
-	Interval    time.Duration `yaml:"interval" json:"interval"`
-	Timeout     time.Duration `yaml:"timeout" json:"timeout"`
+	MaxRequests          uint32        `yaml:"max_requests" json:"max_requests"`
+	ConsecutiveFailures  uint32        `yaml:"consecutive_failures" json:"consecutive_failures"`
+	Interval             time.Duration `yaml:"interval" json:"interval"`
+	Timeout              time.Duration `yaml:"timeout" json:"timeout"`
 }
 
 // RateLimitConfig holds rate limiter settings.
@@ -122,9 +123,10 @@ func Default() *Config {
 		},
 		Resilience: ResilienceConfig{
 			Breaker: BreakerConfig{
-				MaxRequests: 3,
-				Interval:    60 * time.Second,
-				Timeout:     30 * time.Second,
+				MaxRequests:         3,
+				ConsecutiveFailures: 3,
+				Interval:            60 * time.Second,
+				Timeout:             30 * time.Second,
 			},
 			RateLimit: RateLimitConfig{
 				RPS:   100,

@@ -83,11 +83,12 @@ logger:
 
 ### breaker（熔断）
 
-基于 [sony/gobreaker](https://github.com/sony/gobreaker)。连续失败 3 次触发打开（ReadyToTrip 逻辑见 `resilience/breaker.go`）。
+基于 [sony/gobreaker](https://github.com/sony/gobreaker)。连续失败达到 `consecutive_failures` 触发打开（默认 3）。
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `max_requests` | uint32 | `3` | 半开状态允许的最大请求数 |
+| `consecutive_failures` | uint32 | `3` | 连续失败次数达到后打开熔断 |
 | `interval` | duration | `60s` | 统计窗口（关闭状态下重置计数） |
 | `timeout` | duration | `30s` | 打开状态持续时间，之后进入半开 |
 
