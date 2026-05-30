@@ -90,8 +90,10 @@ type AIConfig struct {
 
 // MetricsConfig holds Prometheus metrics settings.
 type MetricsConfig struct {
-	Enabled bool   `yaml:"enabled" json:"enabled"`
-	Path    string `yaml:"path" json:"path"`
+	Enabled   bool   `yaml:"enabled" json:"enabled"`
+	Path      string `yaml:"path" json:"path"`
+	Addr      string `yaml:"addr" json:"addr"`
+	AuthToken string `yaml:"auth_token" json:"auth_token"`
 }
 
 // Default returns a Config with sensible defaults.

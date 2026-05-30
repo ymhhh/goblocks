@@ -170,6 +170,8 @@ ai:
 |------|------|--------|------|
 | `enabled` | bool | `true` | 是否采集并暴露 Prometheus 指标 |
 | `path` | string | `/metrics` | 指标 HTTP 路径 |
+| `addr` | string | — | 独立 metrics 监听地址（设则不与业务 HTTP 共端口） |
+| `auth_token` | string | — | Bearer token 保护 metrics 端点 |
 
 详见 [观测指标](metrics.md)。
 

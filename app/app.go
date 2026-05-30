@@ -36,9 +36,10 @@ type App struct {
 	cfg          *config.Config
 	policy       *resilience.Policy
 	metrics      *metrics.Registry
-	httpServer   *gblockshttp.Server
-	grpcServer   *gblocksgrpc.Server
-	aiClient     ai.Client
+	httpServer    *gblockshttp.Server
+	grpcServer    *gblocksgrpc.Server
+	metricsServer *metrics.Server
+	aiClient      ai.Client
 	httpRegister HTTPRegisterFunc
 	grpcRegister GRPCRegisterFunc
 }
@@ -137,8 +138,36 @@ func (a *App) Run(ctx context.Context) error {
 			if path == "" {
 				path = "/metrics"
 			}
-			engine.GET(path, gin.WrapH(a.metrics.Handler()))
-			logger.L().WithField("path", path).Info("metrics endpoint enabled")
+			if a.cfg.Metrics.Addr != "" {
+				a.metricsServer = metrics.NewServer(
+					a.cfg.Metrics.Addr,
+					path,
+					a.metrics.Handler(),
+					a.cfg.Metrics.AuthToken,
+				)
+				metricsErrCh, err := a.metricsServer.Start()
+				if err != nil {
+					return fmt.Errorf("start metrics: %w", err)
+				}
+				logger.L().WithFields(logger.Fields{
+					"addr": a.cfg.Metrics.Addr,
+					"path": path,
+				}).Info("metrics server started")
+				g.Go(func() error {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case err, ok := <-metricsErrCh:
+						if !ok {
+							return nil
+						}
+						return err
+					}
+				})
+			} else {
+				engine.GET(path, gin.WrapH(metrics.AuthWrap(a.cfg.Metrics.AuthToken, a.metrics.Handler())))
+				logger.L().WithField("path", path).Info("metrics endpoint enabled")
+			}
 		}
 
 		a.httpServer = gblockshttp.NewServer(engine, gblockshttp.Config{
@@ -241,6 +270,13 @@ func (a *App) Run(ctx context.Context) error {
 // Shutdown gracefully stops all servers.
 func (a *App) Shutdown(ctx context.Context) error {
 	var firstErr error
+
+	if a.metricsServer != nil {
+		if err := a.metricsServer.Shutdown(ctx); err != nil && firstErr == nil {
+			firstErr = err
+		}
+		logger.L().Info("metrics server stopped")
+	}
 
 	if a.httpServer != nil {
 		if err := a.httpServer.Shutdown(ctx); err != nil && firstErr == nil {

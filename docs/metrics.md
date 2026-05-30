@@ -8,12 +8,16 @@ Goblocks 内置 [Prometheus](https://prometheus.io/) 指标，默认开启，通
 metrics:
   enabled: true
   path: "/metrics"
+  addr: ":9091"          # 可选：独立 admin 端口，不暴露在业务 HTTP 上
+  auth_token: ""         # 可选：Bearer token 保护 /metrics
 ```
 
 | 字段 | 默认值 | 说明 |
 |------|--------|------|
 | `enabled` | `true` | 是否采集并暴露指标 |
-| `path` | `/metrics` | Prometheus scrape 路径（挂载在 HTTP 服务上） |
+| `path` | `/metrics` | Prometheus scrape 路径 |
+| `addr` | — | 非空时在独立端口暴露 metrics（推荐生产环境） |
+| `auth_token` | — | 非空时要求 `Authorization: Bearer <token>` |
 
 环境变量：`GOBLOCKS_METRICS_ENABLED=true|false`
 
