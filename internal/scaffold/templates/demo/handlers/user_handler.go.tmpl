@@ -1,0 +1,39 @@
+package handlers
+
+import (
+	"context"
+	"fmt"
+
+	"{{.ModulePath}}/domain"
+)
+
+// UserHandler handles user-related use cases.
+type UserHandler struct {
+	UserRepository domain.UserRepository
+}
+
+// NewUserHandler creates a UserHandler with the given repository.
+func NewUserHandler(repo domain.UserRepository) (*UserHandler, error) {
+	if repo == nil {
+		return nil, fmt.Errorf("user repository is required")
+	}
+	return &UserHandler{UserRepository: repo}, nil
+}
+
+// GetUserInfo returns user information by id from context.
+func (h *UserHandler) GetUserInfo(ctx context.Context) (*domainUser, error) {
+	id, err := UserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	user, err := h.UserRepository.GetUserByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return &domainUser{ID: user.ID, Name: user.Name}, nil
+}
+
+type domainUser struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}

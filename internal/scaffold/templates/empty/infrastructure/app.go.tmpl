@@ -1,0 +1,20 @@
+package infrastructure
+
+// Config holds application configuration path overrides.
+type Config struct {
+	ConfigPath string
+}
+
+// App is the composition root.
+type App struct {
+	configPath string
+}
+
+// NewApp wires dependencies.
+func NewApp(cfg Config) (*App, error) {
+	path := cfg.ConfigPath
+	if path == "" {
+		path = "config/config.yaml"
+	}
+	return &App{configPath: path}, nil
+}

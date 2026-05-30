@@ -1,0 +1,28 @@
+server:
+  http:
+    addr: ":8080"
+    tls:
+      enabled: false
+      cert_file: ""
+      key_file: ""
+    h3:
+      enabled: false
+      addr: ":8443"
+  grpc:
+    enabled: false
+    addr: ":9090"
+resilience:
+  breaker:
+    max_requests: 3
+    interval: 60s
+    timeout: 30s
+  rate_limit:
+    rps: 100
+    burst: 200
+ai:
+  enabled: false
+  base_url: "https://api.openai.com/v1"
+  api_key: "${OPENAI_API_KEY}"
+  model: "gpt-4o-mini"
+log:
+  level: info

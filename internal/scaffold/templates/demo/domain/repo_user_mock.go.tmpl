@@ -1,0 +1,43 @@
+package domain
+
+import (
+	"fmt"
+	"sync"
+
+	"{{.ModulePath}}/core"
+)
+
+// UserMockRepo is an in-memory user repository for demo purposes.
+type UserMockRepo struct {
+	mu    sync.RWMutex
+	users map[string]*core.User
+}
+
+// NewUserMockRepo creates a mock user repository with sample data.
+func NewUserMockRepo() *UserMockRepo {
+	return &UserMockRepo{
+		users: map[string]*core.User{
+			"1": {ID: "1", Name: "Alice"},
+			"2": {ID: "2", Name: "Bob"},
+		},
+	}
+}
+
+// Init initializes the repository.
+func (r *UserMockRepo) Init(_ any) error {
+	return nil
+}
+
+// GetUserByID returns a user by id.
+func (r *UserMockRepo) GetUserByID(id string) (*core.User, error) {
+	if id == "" {
+		return nil, ErrInvalidID
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	user, ok := r.users[id]
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", ErrNotFound, id)
+	}
+	return user, nil
+}

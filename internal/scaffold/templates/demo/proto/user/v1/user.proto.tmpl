@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "{{.ModulePath}}/api/grpc/user/v1;userv1";
+
+// UserService provides user operations over gRPC.
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message GetUserResponse {
+  string id = 1;
+  string name = 2;
+}

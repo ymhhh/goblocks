@@ -1,0 +1,24 @@
+package handlers
+
+import (
+	"context"
+	"fmt"
+)
+
+type ctxKey int
+
+const ctxKeyUserID ctxKey = iota
+
+// WithUserID stores the user id in context.
+func WithUserID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, ctxKeyUserID, id)
+}
+
+// UserIDFromContext reads the user id from context.
+func UserIDFromContext(ctx context.Context) (string, error) {
+	id, ok := ctx.Value(ctxKeyUserID).(string)
+	if !ok || id == "" {
+		return "", fmt.Errorf("user id not found in context")
+	}
+	return id, nil
+}

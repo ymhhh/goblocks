@@ -1,0 +1,10 @@
+package domain
+
+import "errors"
+
+var (
+	// ErrNotFound is returned when a user is not found.
+	ErrNotFound = errors.New("user not found")
+	// ErrInvalidID is returned when the user id is invalid.
+	ErrInvalidID = errors.New("invalid user id")
+)

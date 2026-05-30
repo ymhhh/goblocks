@@ -1,0 +1,43 @@
+package infrastructure
+
+import (
+	"{{.ModulePath}}/domain"
+	"{{.ModulePath}}/handlers"
+)
+
+// Config holds application configuration path overrides.
+type Config struct {
+	ConfigPath string
+}
+
+// App is the composition root.
+type App struct {
+	configPath  string
+	UserHandler *handlers.UserHandler
+{{- if .WithAI}}
+	AIHandler   *handlers.AIHandler
+{{- end}}
+}
+
+// NewApp wires dependencies.
+func NewApp(cfg Config) (*App, error) {
+	path := cfg.ConfigPath
+	if path == "" {
+		path = "config/config.yaml"
+	}
+
+	repo := domain.NewUserMockRepo()
+	if err := repo.Init(nil); err != nil {
+		return nil, err
+	}
+
+	userHandler, err := handlers.NewUserHandler(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &App{
+		configPath:  path,
+		UserHandler: userHandler,
+	}, nil
+}

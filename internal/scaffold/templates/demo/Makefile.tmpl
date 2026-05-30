@@ -1,0 +1,15 @@
+.PHONY: build run test tidy
+
+build:
+	go build -o bin/{{.ServiceName}} .
+
+run:
+	go run .
+
+test:
+	go test ./...
+
+tidy:
+	go mod tidy
+
+.DEFAULT_GOAL := run

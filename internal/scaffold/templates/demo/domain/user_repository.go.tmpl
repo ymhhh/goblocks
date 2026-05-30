@@ -1,0 +1,9 @@
+package domain
+
+import "{{.ModulePath}}/core"
+
+// UserRepository defines user persistence operations.
+type UserRepository interface {
+	Init(args any) error
+	GetUserByID(id string) (*core.User, error)
+}

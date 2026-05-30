@@ -1,0 +1,13 @@
+package main
+
+import (
+	"log"
+
+	"{{.ModulePath}}/infrastructure"
+)
+
+func main() {
+	if err := infrastructure.Run("config/config.yaml"); err != nil {
+		log.Fatal(err)
+	}
+}
