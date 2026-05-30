@@ -79,7 +79,7 @@ cd goblocks-cli && make test-integration
 
 - 公开 API 需有 godoc 注释
 - 新功能需附带单元测试
-- 使用 `log/slog` 作为默认日志
+- 使用 [`github.com/ymhhh/go-common/logger`](https://github.com/ymhhh/go-common) 作为默认日志
 
 ## 已知限制
 

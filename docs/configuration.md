@@ -48,8 +48,10 @@ ai:
   base_url: "https://api.openai.com/v1"
   api_key: "${OPENAI_API_KEY}"
   model: "gpt-4o-mini"
-log:
+logger:
   level: info
+  format: text
+  output: stderr
 ```
 
 ## server
@@ -140,11 +142,24 @@ ai:
   model: "gpt-4o"
 ```
 
-## log
+## logger
+
+基于 [`github.com/ymhhh/go-common/logger`](https://github.com/ymhhh/go-common)（logrus）。
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `level` | string | `info` | 日志级别（框架使用 `log/slog`） |
+| `level` | string | `info` | 日志级别：debug/info/warn/error |
+| `format` | string | `text` | `text` 或 `json` |
+| `output` | string | `stderr` | `stdout`/`stderr`/`discard`/文件路径/`file:/path` |
+| `reportCaller` | bool | `false` | 是否记录调用方 |
+| `file.path` | string | — | 文件输出路径 |
+| `file.rotate.enabled` | bool | `false` | 启用 lumberjack 轮转 |
+| `file.rotate.maxSizeMB` | int | `100` | 单文件最大 MB |
+| `file.rotate.maxBackups` | int | `7` | 保留备份数 |
+| `file.rotate.maxAgeDays` | int | `7` | 保留天数 |
+| `text.disableColors` | bool | `false` | text 格式禁用颜色 |
+| `text.fullTimestamp` | bool | `false` | text 格式完整时间戳 |
+| `json.prettyPrint` | bool | `false` | JSON 格式化输出 |
 
 ## metrics
 
@@ -163,7 +178,8 @@ ai:
 | `GOBLOCKS_GRPC_ADDR` | `server.grpc.addr` |
 | `GOBLOCKS_AI_API_KEY` | `ai.api_key` |
 | `GOBLOCKS_AI_BASE_URL` | `ai.base_url` |
-| `GOBLOCKS_LOG_LEVEL` | `log.level` |
+| `GOBLOCKS_LOGGER_LEVEL` | `logger.level` |
+| `GOBLOCKS_LOG_LEVEL` | `logger.level`（已废弃，仍兼容） |
 | `GOBLOCKS_METRICS_ENABLED` | `metrics.enabled` |
 
 ### 占位符展开

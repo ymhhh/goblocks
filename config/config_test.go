@@ -38,7 +38,7 @@ ai:
   enabled: true
   base_url: "http://localhost:11434/v1"
   model: "llama3"
-log:
+logger:
   level: debug
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -61,8 +61,8 @@ log:
 	if cfg.AI.Model != "llama3" {
 		t.Fatalf("expected llama3, got %s", cfg.AI.Model)
 	}
-	if cfg.Log.Level != "debug" {
-		t.Fatalf("expected debug, got %s", cfg.Log.Level)
+	if cfg.Logger.Level != "debug" {
+		t.Fatalf("expected debug, got %s", cfg.Logger.Level)
 	}
 }
 
@@ -79,6 +79,28 @@ func TestEnvOverride(t *testing.T) {
 	}
 	if cfg.AI.APIKey != "test-key" {
 		t.Fatalf("expected test-key, got %s", cfg.AI.APIKey)
+	}
+}
+
+func TestLoggerLevelEnvOverride(t *testing.T) {
+	t.Setenv("GOBLOCKS_LOGGER_LEVEL", "warn")
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Logger.Level != "warn" {
+		t.Fatalf("expected warn, got %s", cfg.Logger.Level)
+	}
+}
+
+func TestLegacyLogLevelEnvOverride(t *testing.T) {
+	t.Setenv("GOBLOCKS_LOG_LEVEL", "error")
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Logger.Level != "error" {
+		t.Fatalf("expected error, got %s", cfg.Logger.Level)
 	}
 }
 

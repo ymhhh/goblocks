@@ -15,7 +15,7 @@ type Config struct {
 	Server     ServerConfig     `yaml:"server" json:"server"`
 	Resilience ResilienceConfig `yaml:"resilience" json:"resilience"`
 	AI         AIConfig         `yaml:"ai" json:"ai"`
-	Log        LogConfig        `yaml:"log" json:"log"`
+	Logger     LoggerConfig     `yaml:"logger" json:"logger"`
 	Metrics    MetricsConfig    `yaml:"metrics" json:"metrics"`
 
 	source commonconfig.Config
@@ -80,11 +80,6 @@ type AIConfig struct {
 	Model   string `yaml:"model" json:"model"`
 }
 
-// LogConfig holds logging settings.
-type LogConfig struct {
-	Level string `yaml:"level" json:"level"`
-}
-
 // MetricsConfig holds Prometheus metrics settings.
 type MetricsConfig struct {
 	Enabled bool   `yaml:"enabled" json:"enabled"`
@@ -127,8 +122,10 @@ func Default() *Config {
 			APIKey:  "",
 			Model:   "gpt-4o-mini",
 		},
-		Log: LogConfig{
-			Level: "info",
+		Logger: LoggerConfig{
+			Level:  "info",
+			Format: "text",
+			Output: "stderr",
 		},
 		Metrics: MetricsConfig{
 			Enabled: true,
@@ -169,8 +166,10 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv(envPrefix + "AI_BASE_URL"); v != "" {
 		cfg.AI.BaseURL = v
 	}
-	if v := os.Getenv(envPrefix + "LOG_LEVEL"); v != "" {
-		cfg.Log.Level = v
+	if v := os.Getenv(envPrefix + "LOGGER_LEVEL"); v != "" {
+		cfg.Logger.Level = v
+	} else if v := os.Getenv(envPrefix + "LOG_LEVEL"); v != "" {
+		cfg.Logger.Level = v
 	}
 	if v := os.Getenv(envPrefix + "METRICS_ENABLED"); v != "" {
 		cfg.Metrics.Enabled = v == "true" || v == "1"

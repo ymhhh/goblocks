@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sony/gobreaker"
+	"github.com/ymhhh/go-common/logger"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
@@ -112,6 +112,10 @@ func (a *App) Run(ctx context.Context) error {
 		ctx = context.Background()
 	}
 
+	if err := a.cfg.InitLogger(); err != nil {
+		return fmt.Errorf("init logger: %w", err)
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -133,7 +137,7 @@ func (a *App) Run(ctx context.Context) error {
 				path = "/metrics"
 			}
 			engine.GET(path, gin.WrapH(a.metrics.Handler()))
-			slog.Info("metrics endpoint enabled", "path", path)
+			logger.L().WithField("path", path).Info("metrics endpoint enabled")
 		}
 
 		a.httpServer = gblockshttp.NewServer(engine, gblockshttp.Config{
@@ -153,7 +157,7 @@ func (a *App) Run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("start http: %w", err)
 		}
-		slog.Info("http server started", "addr", a.httpServer.Addr())
+		logger.L().WithField("addr", a.httpServer.Addr()).Info("http server started")
 
 		g.Go(func() error {
 			select {
@@ -192,7 +196,7 @@ func (a *App) Run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("start grpc: %w", err)
 		}
-		slog.Info("grpc server started", "addr", a.grpcServer.Addr())
+		logger.L().WithField("addr", a.grpcServer.Addr()).Info("grpc server started")
 
 		g.Go(func() error {
 			select {
@@ -215,7 +219,7 @@ func (a *App) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case sig := <-sigCh:
-			slog.Info("received shutdown signal", "signal", sig.String())
+			logger.L().WithField("signal", sig.String()).Info("received shutdown signal")
 			cancel()
 			return nil
 		}
@@ -241,12 +245,12 @@ func (a *App) Shutdown(ctx context.Context) error {
 		if err := a.httpServer.Shutdown(ctx); err != nil && firstErr == nil {
 			firstErr = err
 		}
-		slog.Info("http server stopped")
+		logger.L().Info("http server stopped")
 	}
 
 	if a.grpcServer != nil {
 		a.grpcServer.Shutdown()
-		slog.Info("grpc server stopped")
+		logger.L().Info("grpc server stopped")
 	}
 
 	select {
