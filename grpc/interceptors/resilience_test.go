@@ -6,6 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"github.com/ymhhh/goblocks/resilience"
@@ -94,6 +95,53 @@ func TestRouteUnaryServerInterceptor(t *testing.T) {
 	_, err = interceptor(context.Background(), nil, infoOther, handler)
 	if err != nil {
 		t.Fatalf("unconfigured method should pass, got %v", err)
+	}
+}
+
+func TestUserUnaryServerInterceptor(t *testing.T) {
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend:     resilience.NewMemoryRateLimiter(),
+			UserEnabled: true,
+			UserRule:    resilience.LimitRule{RPS: 1, Burst: 1},
+		},
+	}
+	interceptor := UserUnaryServerInterceptor(policy, nil)
+	handler := func(ctx context.Context, req any) (any, error) {
+		return "ok", nil
+	}
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Echo"}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("x-user-id", "alice"))
+	_, err := interceptor(ctx, nil, info, handler)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = interceptor(ctx, nil, info, handler)
+	if status.Code(err) != codes.ResourceExhausted {
+		t.Fatalf("expected ResourceExhausted, got %v", err)
+	}
+}
+
+func TestUserUnaryServerInterceptorDisabled(t *testing.T) {
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend:     resilience.NewMemoryRateLimiter(),
+			UserEnabled: false,
+			UserRule:    resilience.LimitRule{RPS: 1, Burst: 1},
+		},
+	}
+	interceptor := UserUnaryServerInterceptor(policy, nil)
+	handler := func(ctx context.Context, req any) (any, error) {
+		return "ok", nil
+	}
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Echo"}
+
+	for i := 0; i < 3; i++ {
+		_, err := interceptor(context.Background(), nil, info, handler)
+		if err != nil {
+			t.Fatalf("request %d: %v", i+1, err)
+		}
 	}
 }
 
