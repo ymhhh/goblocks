@@ -128,3 +128,37 @@ resilience:
 		t.Fatalf("expected 30s, got %v", cfg.Resilience.Breaker.Interval)
 	}
 }
+
+func TestLoadInclude(t *testing.T) {
+	dir := t.TempDir()
+	incPath := filepath.Join(dir, "inc.yaml")
+	if err := os.WriteFile(incPath, []byte(`
+server:
+  http:
+    addr: ":7000"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	mainPath := filepath.Join(dir, "config.yaml")
+	content := `
+#include inc.yaml
+server:
+  grpc:
+    addr: ":7001"
+`
+	if err := os.WriteFile(mainPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(mainPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Server.HTTP.Addr != ":7000" {
+		t.Fatalf("expected :7000 from include, got %s", cfg.Server.HTTP.Addr)
+	}
+	if cfg.Server.GRPC.Addr != ":7001" {
+		t.Fatalf("expected :7001, got %s", cfg.Server.GRPC.Addr)
+	}
+}

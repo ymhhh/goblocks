@@ -1,6 +1,23 @@
 # 配置参考
 
-Goblocks 使用 YAML 配置文件，默认路径 `config/config.yaml`。可通过 `config.Load(path)` 加载，环境变量以 `GOBLOCKS_` 前缀覆盖部分字段。
+Goblocks 使用 YAML 配置文件，默认路径 `config/config.yaml`。通过 [`github.com/ymhhh/go-common/config`](https://github.com/ymhhh/go-common) 加载，支持 `#include`、 `${ENV}` 与 `${a.b.c}` 引用；`GOBLOCKS_*` 环境变量在加载后覆盖部分字段。
+
+## 高级特性
+
+### 拆分配置（#include）
+
+```yaml
+#include base.yaml
+#include secrets.yaml
+server:
+  http:
+    addr: ":8080"
+```
+
+### 占位符
+
+- `${OPENAI_API_KEY}` — 环境变量
+- `${server.http.addr}` — 同文件内交叉引用
 
 ## 完整示例
 
@@ -151,7 +168,7 @@ ai:
 
 ### 占位符展开
 
-配置中 `api_key: "${OPENAI_API_KEY}"` 会在加载时替换为对应环境变量值。
+配置中 `api_key: "${OPENAI_API_KEY}"` 由 go-common 在加载时解析为环境变量值。加载完成后，`GOBLOCKS_*` 变量仍可覆盖对应字段（优先级更高）。
 
 ## HTTP/2 与 HTTP/3 启用步骤
 

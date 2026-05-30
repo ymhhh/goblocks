@@ -3,91 +3,92 @@ package config
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
+	commonconfig "github.com/ymhhh/go-common/config"
 )
 
 const envPrefix = "GOBLOCKS_"
 
 // Config holds the full application configuration.
 type Config struct {
-	Server     ServerConfig     `yaml:"server"`
-	Resilience ResilienceConfig `yaml:"resilience"`
-	AI         AIConfig         `yaml:"ai"`
-	Log        LogConfig        `yaml:"log"`
-	Metrics    MetricsConfig    `yaml:"metrics"`
+	Server     ServerConfig     `yaml:"server" json:"server"`
+	Resilience ResilienceConfig `yaml:"resilience" json:"resilience"`
+	AI         AIConfig         `yaml:"ai" json:"ai"`
+	Log        LogConfig        `yaml:"log" json:"log"`
+	Metrics    MetricsConfig    `yaml:"metrics" json:"metrics"`
+
+	source commonconfig.Config
 }
 
 // ServerConfig holds HTTP and gRPC server settings.
 type ServerConfig struct {
-	HTTP HTTPConfig `yaml:"http"`
-	GRPC GRPCConfig `yaml:"grpc"`
+	HTTP HTTPConfig `yaml:"http" json:"http"`
+	GRPC GRPCConfig `yaml:"grpc" json:"grpc"`
 }
 
 // HTTPConfig holds HTTP server settings.
 type HTTPConfig struct {
-	Addr string    `yaml:"addr"`
-	TLS  TLSConfig `yaml:"tls"`
-	H3   H3Config  `yaml:"h3"`
+	Addr string    `yaml:"addr" json:"addr"`
+	TLS  TLSConfig `yaml:"tls" json:"tls"`
+	H3   H3Config  `yaml:"h3" json:"h3"`
 }
 
 // TLSConfig holds TLS certificate settings.
 type TLSConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	CertFile string `yaml:"cert_file"`
-	KeyFile  string `yaml:"key_file"`
+	Enabled  bool   `yaml:"enabled" json:"enabled"`
+	CertFile string `yaml:"cert_file" json:"cert_file"`
+	KeyFile  string `yaml:"key_file" json:"key_file"`
 }
 
 // H3Config holds HTTP/3 settings.
 type H3Config struct {
-	Enabled bool   `yaml:"enabled"`
-	Addr    string `yaml:"addr"`
+	Enabled bool   `yaml:"enabled" json:"enabled"`
+	Addr    string `yaml:"addr" json:"addr"`
 }
 
 // GRPCConfig holds gRPC server settings.
 type GRPCConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Addr    string `yaml:"addr"`
+	Enabled bool   `yaml:"enabled" json:"enabled"`
+	Addr    string `yaml:"addr" json:"addr"`
 }
 
 // ResilienceConfig holds circuit breaker and rate limit settings.
 type ResilienceConfig struct {
-	Breaker   BreakerConfig   `yaml:"breaker"`
-	RateLimit RateLimitConfig `yaml:"rate_limit"`
+	Breaker   BreakerConfig   `yaml:"breaker" json:"breaker"`
+	RateLimit RateLimitConfig `yaml:"rate_limit" json:"rate_limit"`
 }
 
 // BreakerConfig holds circuit breaker settings.
 type BreakerConfig struct {
-	MaxRequests uint32        `yaml:"max_requests"`
-	Interval    time.Duration `yaml:"interval"`
-	Timeout     time.Duration `yaml:"timeout"`
+	MaxRequests uint32        `yaml:"max_requests" json:"max_requests"`
+	Interval    time.Duration `yaml:"interval" json:"interval"`
+	Timeout     time.Duration `yaml:"timeout" json:"timeout"`
 }
 
 // RateLimitConfig holds rate limiter settings.
 type RateLimitConfig struct {
-	RPS   float64 `yaml:"rps"`
-	Burst int     `yaml:"burst"`
+	RPS   float64 `yaml:"rps" json:"rps"`
+	Burst int     `yaml:"burst" json:"burst"`
 }
 
 // AIConfig holds OpenAI-compatible API settings.
 type AIConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	BaseURL string `yaml:"base_url"`
-	APIKey  string `yaml:"api_key"`
-	Model   string `yaml:"model"`
+	Enabled bool   `yaml:"enabled" json:"enabled"`
+	BaseURL string `yaml:"base_url" json:"base_url"`
+	APIKey  string `yaml:"api_key" json:"api_key"`
+	Model   string `yaml:"model" json:"model"`
 }
 
 // LogConfig holds logging settings.
 type LogConfig struct {
-	Level string `yaml:"level"`
+	Level string `yaml:"level" json:"level"`
 }
 
 // MetricsConfig holds Prometheus metrics settings.
 type MetricsConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Path    string `yaml:"path"`
+	Enabled bool   `yaml:"enabled" json:"enabled"`
+	Path    string `yaml:"path" json:"path"`
 }
 
 // Default returns a Config with sensible defaults.
@@ -141,17 +142,17 @@ func Load(path string) (*Config, error) {
 	cfg := Default()
 
 	if path != "" {
-		data, err := os.ReadFile(path)
+		tree, err := commonconfig.Load(path)
 		if err != nil {
-			return nil, fmt.Errorf("read config file: %w", err)
+			return nil, fmt.Errorf("load config file: %w", err)
 		}
-		if err := yaml.Unmarshal(data, cfg); err != nil {
-			return nil, fmt.Errorf("parse config file: %w", err)
+		if err := tree.Object(cfg); err != nil {
+			return nil, fmt.Errorf("decode config: %w", err)
 		}
+		cfg.source = tree
 	}
 
 	applyEnvOverrides(cfg)
-	expandEnvVars(cfg)
 	return cfg, nil
 }
 
@@ -174,19 +175,4 @@ func applyEnvOverrides(cfg *Config) {
 	if v := os.Getenv(envPrefix + "METRICS_ENABLED"); v != "" {
 		cfg.Metrics.Enabled = v == "true" || v == "1"
 	}
-}
-
-func expandEnvVars(cfg *Config) {
-	cfg.AI.APIKey = expandString(cfg.AI.APIKey)
-	cfg.AI.BaseURL = expandString(cfg.AI.BaseURL)
-}
-
-func expandString(s string) string {
-	if strings.HasPrefix(s, "${") && strings.HasSuffix(s, "}") {
-		key := s[2 : len(s)-1]
-		if val := os.Getenv(key); val != "" {
-			return val
-		}
-	}
-	return os.ExpandEnv(s)
 }
