@@ -16,6 +16,7 @@ Goblocks 是 Go 语言服务端框架，提供 HTTP（H1/H2/H3）、gRPC、OpenA
 | [分布式追踪](tracing.md) | OpenTelemetry 可选 hook |
 | [grpc-gateway](grpc-gateway.md) | REST 网关集成指南（可选） |
 | [开发指南](development.md) | 框架开发、测试与发布 |
+| [API 稳定性](stability.md) | 版本策略与兼容承诺 |
 
 ## 快速链接
 

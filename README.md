@@ -134,4 +134,6 @@ make lint    # go vet && go fmt
 
 ## License
 
-GPL-3.0（与 ddd-onion-sample 保持一致）
+GPL-3.0（与 [ddd-onion-sample](https://github.com/ymhhh/ddd-onion-sample) 保持一致）。
+
+链接本框架编写的服务在分发时需遵守 GPL-3.0 源码公开要求；若需闭源分发，请评估许可证兼容性或联系维护者。API 稳定性说明见 [docs/stability.md](docs/stability.md)。
