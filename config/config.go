@@ -75,10 +75,71 @@ type BreakerConfig struct {
 	Timeout              time.Duration `yaml:"timeout" json:"timeout"`
 }
 
-// RateLimitConfig holds rate limiter settings.
+// RateLimitConfig holds layered rate limiter settings.
 type RateLimitConfig struct {
+	// Deprecated: use global.rps. Kept for backward compatibility.
 	RPS   float64 `yaml:"rps" json:"rps"`
 	Burst int     `yaml:"burst" json:"burst"`
+
+	Backend string              `yaml:"backend" json:"backend"` // memory | redis
+	Global  RateLimitTierConfig `yaml:"global" json:"global"`
+	Redis   RedisRateLimitConfig `yaml:"redis" json:"redis"`
+	User    UserRateLimitConfig  `yaml:"user" json:"user"`
+	Routes  []RouteRateLimitConfig `yaml:"routes" json:"routes"`
+}
+
+// RateLimitTierConfig holds RPS/burst for one limit tier.
+type RateLimitTierConfig struct {
+	RPS   float64 `yaml:"rps" json:"rps"`
+	Burst int     `yaml:"burst" json:"burst"`
+}
+
+// RedisRateLimitConfig holds Redis backend settings.
+type RedisRateLimitConfig struct {
+	Addr      string `yaml:"addr" json:"addr"`
+	KeyPrefix string `yaml:"key_prefix" json:"key_prefix"`
+}
+
+// UserRateLimitConfig holds per-user (L2) defaults.
+type UserRateLimitConfig struct {
+	Enabled    bool    `yaml:"enabled" json:"enabled"`
+	DefaultRPS float64 `yaml:"default_rps" json:"default_rps"`
+	Burst      int     `yaml:"burst" json:"burst"`
+}
+
+// RouteRateLimitConfig holds per-route (L3) limits.
+type RouteRateLimitConfig struct {
+	Method string  `yaml:"method" json:"method"`
+	Path   string  `yaml:"path" json:"path"`
+	RPS    float64 `yaml:"rps" json:"rps"`
+	Burst  int     `yaml:"burst" json:"burst"`
+}
+
+// Normalized returns a copy with legacy top-level rps/burst mapped into global.
+func (c RateLimitConfig) Normalized() RateLimitConfig {
+	out := c
+	if out.RPS > 0 {
+		out.Global.RPS = out.RPS
+	}
+	if out.Burst > 0 {
+		out.Global.Burst = out.Burst
+	}
+	if out.Global.RPS <= 0 {
+		out.Global.RPS = 100
+	}
+	if out.Global.Burst <= 0 {
+		out.Global.Burst = 200
+	}
+	if out.User.DefaultRPS <= 0 {
+		out.User.DefaultRPS = 20
+	}
+	if out.User.Burst <= 0 {
+		out.User.Burst = 40
+	}
+	if out.Redis.KeyPrefix == "" {
+		out.Redis.KeyPrefix = "goblocks:rl:"
+	}
+	return out
 }
 
 // AIConfig holds OpenAI-compatible API settings.
@@ -129,8 +190,19 @@ func Default() *Config {
 				Timeout:             30 * time.Second,
 			},
 			RateLimit: RateLimitConfig{
-				RPS:   100,
-				Burst: 200,
+				Backend: "memory",
+				Global: RateLimitTierConfig{
+					RPS:   100,
+					Burst: 200,
+				},
+				User: UserRateLimitConfig{
+					Enabled:    false,
+					DefaultRPS: 20,
+					Burst:      40,
+				},
+				Redis: RedisRateLimitConfig{
+					KeyPrefix: "goblocks:rl:",
+				},
 			},
 		},
 		AI: AIConfig{
@@ -190,5 +262,11 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv(envPrefix + "METRICS_ENABLED"); v != "" {
 		cfg.Metrics.Enabled = v == "true" || v == "1"
+	}
+	if v := os.Getenv(envPrefix + "REDIS_ADDR"); v != "" {
+		cfg.Resilience.RateLimit.Redis.Addr = v
+	}
+	if v := os.Getenv(envPrefix + "RATE_LIMIT_BACKEND"); v != "" {
+		cfg.Resilience.RateLimit.Backend = v
 	}
 }

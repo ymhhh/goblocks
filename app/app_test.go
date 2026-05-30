@@ -29,7 +29,11 @@ func TestAppHTTPRegistration(t *testing.T) {
 		})
 	}
 
-	register(engine, resilience.NewPolicyFromConfig(cfg.Resilience))
+	policy, err := resilience.NewPolicyFromConfig(cfg.Resilience)
+	if err != nil {
+		t.Fatal(err)
+	}
+	register(engine, policy)
 	if !registered {
 		t.Fatal("expected route registration")
 	}

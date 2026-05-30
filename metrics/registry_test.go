@@ -31,10 +31,10 @@ func TestHTTPMiddlewareRecordsMetrics(t *testing.T) {
 
 func TestResilienceMetrics(t *testing.T) {
 	reg := NewRegistry()
-	reg.RecordRateLimitRejected("http")
+	reg.RecordRateLimitRejected("http", "global")
 	reg.RecordCircuitBreakerRejected("grpc")
 
-	if v := testutil.ToFloat64(reg.RateLimitRejectedTotal.WithLabelValues("http")); v != 1 {
+	if v := testutil.ToFloat64(reg.RateLimitRejectedTotal.WithLabelValues("http", "global")); v != 1 {
 		t.Fatalf("expected 1 rate limit rejection, got %v", v)
 	}
 	if v := testutil.ToFloat64(reg.CircuitBreakerRejectedTotal.WithLabelValues("grpc")); v != 1 {

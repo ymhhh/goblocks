@@ -57,11 +57,14 @@ func New(cfg *config.Config) *App {
 		reg = metrics.NewRegistry()
 	}
 
-	policy := resilience.NewPolicyFromConfig(cfg.Resilience, resilience.WithBreakerStateChange(func(name string, from, to gobreaker.State) {
+	policy, err := resilience.NewPolicyFromConfig(cfg.Resilience, resilience.WithBreakerStateChange(func(name string, from, to gobreaker.State) {
 		if reg != nil {
 			reg.SetCircuitBreakerState(name, to)
 		}
 	}))
+	if err != nil {
+		panic(fmt.Sprintf("init policy: %v", err))
+	}
 	if reg != nil && policy.Breaker != nil {
 		reg.SetCircuitBreakerState("default", policy.Breaker.State())
 	}
@@ -134,7 +137,8 @@ func (a *App) Run(ctx context.Context) error {
 		for _, mw := range a.httpTracing {
 			engine.Use(mw)
 		}
-		engine.Use(httpmiddleware.ResilienceWithBreaker(a.policy, a.metrics))
+		engine.Use(httpmiddleware.GlobalRateLimit(a.policy, a.metrics))
+		engine.Use(httpmiddleware.BreakerCheck(a.policy, a.metrics))
 		a.httpRegister(engine, a.policy)
 		registerHealthRoutes(engine, a)
 

@@ -11,13 +11,18 @@
 
 ```
 goblocks/
-├── app/              应用生命周期
-├── config/           配置加载
-├── resilience/       熔断限流
-├── http/             HTTP 服务 + middleware
-├── grpc/             gRPC 服务 + interceptors
-├── ai/               AI 客户端
-├── metrics/          Prometheus 指标
+├── app/              应用生命周期（默认 L1 + breaker）
+├── config/           配置加载（resilience.rate_limit 分层 schema）
+├── resilience/       熔断 + RateLimiter（memory/redis）+ Policy
+│   ├── ratelimiter.go / memory_ratelimiter.go / redis_ratelimiter.go
+│   ├── keyed.go / factory.go / policy.go
+│   └── limiter.go    旧版单桶 helper（测试兼容）
+├── http/             HTTP 服务
+│   └── middleware/   GlobalRateLimit、UserRateLimit、RouteRateLimit
+├── grpc/             gRPC 服务
+│   └── interceptors/ L1/L2/L3 unary interceptors
+├── ai/               AI 客户端（出站 L1 + breaker）
+├── metrics/          Prometheus（scope label）
 ├── docs/             说明文档
 ├── Makefile
 └── README.md
@@ -84,6 +89,6 @@ cd goblocks-cli && make test-integration
 ## 已知限制
 
 - 无服务注册发现（Consul/Etcd）
-- 限流为进程内令牌桶，非分布式
+- 限流 Redis 后端需独立 Redis；`memory` 后端仅单进程有效
 - gRPC 与 HTTP 不可同端口
 - HTTP/3 需额外 UDP 端口与 TLS

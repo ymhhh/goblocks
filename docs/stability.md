@@ -14,7 +14,20 @@
 | `app.New(cfg)` | 构造应用 |
 | `app.(*App).WithHTTP` / `WithGRPC` | 注册路由与服务 |
 | `app.(*App).Run(ctx)` | 启动与优雅关闭 |
-| `resilience.NewPolicyFromConfig` | 从配置创建策略 |
+| `resilience.NewPolicyFromConfig` | 从配置创建策略，返回 `(*Policy, error)` |
+
+### 分层限流（v0.3+）
+
+| API | 层 | 挂载位置 |
+|-----|-----|----------|
+| `http/middleware.GlobalRateLimit` | L1 | `app.Run` 默认 |
+| `http/middleware.UserRateLimit` | L2 | 业务 `infrastructure` |
+| `http/middleware.RouteRateLimit` | L3 | 业务路由组 |
+| `grpc/interceptors.UnaryServerInterceptor` | L1 | `app.Run` 默认 |
+| `grpc/interceptors.UserUnaryServerInterceptor` | L2 | 业务 infrastructure |
+| `grpc/interceptors.RouteUnaryServerInterceptor` | L3 | 业务 infrastructure |
+
+配置 `resilience.rate_limit` 新增 `global` / `user` / `routes` / `backend`；顶层 `rps`/`burst` 仍兼容。
 
 ## v1.0 目标
 

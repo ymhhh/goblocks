@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.3.0] - 2026-05-30
+
+### Added
+
+- **Layered rate limiting** (L1 global / L2 user / L3 route): `RateLimiter` interface with `MemoryRateLimiter` and `RedisRateLimiter` (GCRA via `go-redis/redis_rate`)
+- HTTP middleware: `GlobalRateLimit`, `UserRateLimit`, `RouteRateLimit`, `RateLimitByKey`, `BreakerCheck`
+- gRPC interceptors: `UserUnaryServerInterceptor`, `RouteUnaryServerInterceptor` (L1 remains in `UnaryServerInterceptor`)
+- Config schema: `resilience.rate_limit` extended with `global`, `user`, `routes`, `backend` (`memory` | `redis`), `redis.addr`, `redis.key_prefix`
+- Environment variables: `GOBLOCKS_REDIS_ADDR`, `GOBLOCKS_RATE_LIMIT_BACKEND`
+- Metrics: `rate_limit_rejected_total` gains `scope` label (`global` | `user` | `route`)
+- Key helpers: `ContextWithUserID`, `UserKeyFromContext`, `RouteKey`, `GlobalKey`
+
+### Changed
+
+- **Breaking:** `resilience.NewPolicyFromConfig` now returns `(*Policy, error)` (Redis backend requires valid `redis.addr`)
+- **Breaking:** `app.Run` mounts **L1 global rate limit + breaker only**; L2/L3 must be registered in business `infrastructure/registerHTTP` or gRPC interceptor chain
+- `resilience.rate_limit.rps` / `burst` deprecated in favor of `global.rps` / `global.burst` (legacy fields still mapped)
+- HTTP resilience middleware split: removed `http/middleware/resilience.go`; use `ratelimit.go` APIs (`Resilience` / `ResilienceWithBreaker` deprecated)
+- Documentation reorganized: layered rate-limit directory mapping in `docs/architecture.md`; README simplified
+
+### Removed
+
+- `examples/minimal` (use [goblocks-cli](https://github.com/ymhhh/goblocks-cli) to scaffold new projects)
+- `docs/scaffold.md` (CLI usage documented in [goblocks-cli](https://github.com/ymhhh/goblocks-cli))
+
 ## [v0.2.2] - 2026-05-30
 
 ### Added

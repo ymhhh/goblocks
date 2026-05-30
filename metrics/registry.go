@@ -64,7 +64,7 @@ func NewRegistry() *Registry {
 		Namespace: namespace,
 		Name:      "resilience_rate_limit_rejected_total",
 		Help:      "Total number of requests rejected by rate limiting.",
-	}, []string{"protocol"})
+	}, []string{"protocol", "scope"})
 
 	r.CircuitBreakerRejectedTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
@@ -112,11 +112,14 @@ func (r *Registry) Handler() http.Handler {
 }
 
 // RecordRateLimitRejected increments rate limit rejection counter.
-func (r *Registry) RecordRateLimitRejected(protocol string) {
+func (r *Registry) RecordRateLimitRejected(protocol, scope string) {
 	if r == nil {
 		return
 	}
-	r.RateLimitRejectedTotal.WithLabelValues(protocol).Inc()
+	if scope == "" {
+		scope = "global"
+	}
+	r.RateLimitRejectedTotal.WithLabelValues(protocol, scope).Inc()
 }
 
 // RecordCircuitBreakerRejected increments circuit breaker rejection counter.

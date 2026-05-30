@@ -15,8 +15,9 @@ func TestDefault(t *testing.T) {
 	if cfg.Server.GRPC.Addr != ":9090" {
 		t.Fatalf("expected :9090, got %s", cfg.Server.GRPC.Addr)
 	}
-	if cfg.Resilience.RateLimit.RPS != 100 {
-		t.Fatalf("expected rps 100, got %f", cfg.Resilience.RateLimit.RPS)
+	normalized := cfg.Resilience.RateLimit.Normalized()
+	if normalized.Global.RPS != 100 {
+		t.Fatalf("expected global rps 100, got %f", normalized.Global.RPS)
 	}
 }
 
@@ -55,8 +56,9 @@ logger:
 	if !cfg.Server.GRPC.Enabled == false {
 		t.Fatal("expected grpc disabled")
 	}
-	if cfg.Resilience.RateLimit.RPS != 50 {
-		t.Fatalf("expected rps 50, got %f", cfg.Resilience.RateLimit.RPS)
+	normalized := cfg.Resilience.RateLimit.Normalized()
+	if normalized.Global.RPS != 50 {
+		t.Fatalf("expected global rps 50, got %f", normalized.Global.RPS)
 	}
 	if cfg.AI.Model != "llama3" {
 		t.Fatalf("expected llama3, got %s", cfg.AI.Model)

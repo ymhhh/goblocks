@@ -58,7 +58,7 @@ curl http://localhost:8080/metrics
 
 | 指标 | 类型 | 标签 | 说明 |
 |------|------|------|------|
-| `goblocks_resilience_rate_limit_rejected_total` | Counter | `protocol` | 限流拒绝次数（`http` / `grpc`） |
+| `goblocks_resilience_rate_limit_rejected_total` | Counter | `protocol`, `scope` | 限流拒绝次数；`scope` 为 `global` / `user` / `route` |
 | `goblocks_resilience_circuit_breaker_rejected_total` | Counter | `protocol` | 熔断拒绝次数 |
 | `goblocks_resilience_circuit_breaker_state` | Gauge | `name` | 熔断器状态：0=closed, 1=half-open, 2=open |
 
@@ -80,8 +80,9 @@ rate(goblocks_http_requests_total[1m])
 # HTTP P99 延迟
 histogram_quantile(0.99, rate(goblocks_http_request_duration_seconds_bucket[5m]))
 
-# 限流拒绝率
+# 限流拒绝率（按层级）
 rate(goblocks_resilience_rate_limit_rejected_total[1m])
+rate(goblocks_resilience_rate_limit_rejected_total{scope="user"}[1m])
 
 # 熔断器是否打开
 goblocks_resilience_circuit_breaker_state == 2

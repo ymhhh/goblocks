@@ -41,8 +41,25 @@ resilience:
     interval: 60s
     timeout: 30s
   rate_limit:
-    rps: 100
-    burst: 200
+    backend: memory          # memory | redis
+    global:
+      rps: 100
+      burst: 200
+    redis:
+      addr: "redis://localhost:6379/0"
+      key_prefix: "goblocks:rl:"
+    user:
+      enabled: true
+      default_rps: 20
+      burst: 40
+    routes:
+      - method: POST
+        path: /api/v1/ai/chat
+        rps: 5
+        burst: 10
+    # 兼容旧版（等价于 global）:
+    # rps: 100
+    # burst: 200
 ai:
   enabled: false
   base_url: "https://api.openai.com/v1"
@@ -92,18 +109,29 @@ logger:
 | `interval` | duration | `60s` | 统计窗口（关闭状态下重置计数） |
 | `timeout` | duration | `30s` | 打开状态持续时间，之后进入半开 |
 
-### rate_limit（限流）
+### rate_limit（分层限流）
 
-基于令牌桶 [golang.org/x/time/rate](https://pkg.go.dev/golang.org/x/time/rate)。
+三层限流模型：**L1 全局（服务/集群）→ L2 用户 → L3 路由/API**。框架 `app` 默认仅挂载 **L1**；L2/L3 在业务 `infrastructure/registerHTTP` 中按鉴权与路由组挂载（见 [架构设计](architecture.md)）。
+
+后端：`memory`（单进程/开发）或 `redis`（多 Pod 分布式，基于 GCRA）。
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `rps` | float64 | `100` | 每秒令牌生成速率 |
-| `burst` | int | `200` | 桶容量（突发上限） |
+| `backend` | string | `memory` | `memory` 或 `redis` |
+| `global.rps` | float64 | `100` | L1 全局限流 RPS |
+| `global.burst` | int | `200` | L1 突发容量 |
+| `redis.addr` | string | — | Redis 地址（`backend: redis` 时必填） |
+| `redis.key_prefix` | string | `goblocks:rl:` | Redis key 前缀 |
+| `user.enabled` | bool | `false` | 是否启用 L2（需在 infrastructure 挂载 middleware） |
+| `user.default_rps` | float64 | `20` | L2 每用户默认 RPS |
+| `user.burst` | int | `40` | L2 每用户突发容量 |
+| `routes` | list | — | L3 路由规则（method + path + rps + burst） |
+| `rps` | float64 | — | **已废弃**，映射到 `global.rps` |
+| `burst` | int | — | **已废弃**，映射到 `global.burst` |
 
 HTTP 超限返回 **429**；gRPC 超限返回 **ResourceExhausted**；熔断打开 HTTP 返回 **503**，gRPC 返回 **Unavailable**。
 
-## ai
+相关环境变量见本文 [环境变量](#环境变量) 一节。
 
 OpenAI 兼容 HTTP API，底层使用 [go-openai](https://github.com/sashabaranov/go-openai)。
 
@@ -187,6 +215,8 @@ ai:
 | `GOBLOCKS_LOGGER_LEVEL` | `logger.level` |
 | `GOBLOCKS_LOG_LEVEL` | `logger.level`（已废弃，仍兼容） |
 | `GOBLOCKS_METRICS_ENABLED` | `metrics.enabled` |
+| `GOBLOCKS_REDIS_ADDR` | `resilience.rate_limit.redis.addr` |
+| `GOBLOCKS_RATE_LIMIT_BACKEND` | `resilience.rate_limit.backend` |
 
 ### 占位符展开
 

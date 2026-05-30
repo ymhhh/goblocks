@@ -19,30 +19,44 @@ defaults := config.Default()
 
 ## resilience
 
-熔断 + 限流统一抽象。
+熔断 + **分层限流**（L1 全局 / L2 用户 / L3 路由）统一抽象。
+
+### RateLimiter 与后端
+
+```go
+// 接口：按 key + rule 检查（memory 或 redis）
+type RateLimiter interface {
+    Allow(ctx context.Context, key string, rule LimitRule) (bool, error)
+}
+
+backend, err := resilience.NewRateLimiterBackend(cfg.Resilience.RateLimit)
+// memory: 进程内令牌桶；redis: GCRA，key 前缀见 config redis.key_prefix
+```
+
+Key 约定（`resilience/keyed.go`）：
+
+| 层 | Key 示例 |
+|----|----------|
+| L1 | `global` |
+| L2 | `user:alice`（无 userId 时为 `user:anonymous`） |
+| L3 | `route:POST:/ai/chat` |
 
 ### Policy
 
 ```go
 import "github.com/ymhhh/goblocks/resilience"
 
-// 从配置创建
-policy := resilience.NewPolicyFromConfig(cfg.Resilience)
+// 从配置创建（需处理 error；redis backend 需有效 addr）
+policy, err := resilience.NewPolicyFromConfig(cfg.Resilience)
 
-// 手动创建
-breaker := resilience.NewBreaker(resilience.BreakerSettings{
-    Name:        "my-service",
-    MaxRequests: 3,
-    Interval:    60 * time.Second,
-    Timeout:     30 * time.Second,
-})
-limiter := resilience.NewLimiter(100, 200)
-policy := resilience.NewPolicy(breaker, limiter)
+// 分层限流检查
+policy.AllowGlobal(ctx)                       // L1
+policy.AllowUser(ctx, "")                     // L2（context 或显式 key）
+policy.AllowRoute(ctx, "POST", "/ai/chat")    // L3（config routes 有规则时生效）
 
-// 限流检查（入站）
-if err := policy.Allow(); err != nil {
-    // ErrRateLimited
-}
+// 用户身份（HTTP）
+ctx = resilience.ContextWithUserID(ctx, userID)
+key := resilience.UserKeyFromContext(ctx)
 
 // 熔断包裹（出站/业务执行）
 result, err := policy.Execute(func() (any, error) {
@@ -92,11 +106,15 @@ defer srv.Shutdown()
 ```go
 import httpmiddleware "github.com/ymhhh/goblocks/http/middleware"
 
-engine.Use(httpmiddleware.Resilience(policy))           // 仅限流
-engine.Use(httpmiddleware.ResilienceWithBreaker(policy)) // 限流 + 熔断状态检查
+engine.Use(httpmiddleware.GlobalRateLimit(policy, metrics)) // L1（app 默认已挂载）
+engine.Use(httpmiddleware.BreakerCheck(policy, metrics))
+engine.Use(httpmiddleware.UserRateLimit(policy, metrics))  // L2（infrastructure 挂载）
+engine.Use(httpmiddleware.RouteRateLimit(policy, metrics)) // L3
+// 或自定义 key：
+engine.Use(httpmiddleware.RateLimitByKey(keyFn, rule, scope, policy, metrics))
 ```
 
-`app.App` 默认使用 `ResilienceWithBreaker`。
+`app.App` 默认挂载 `GlobalRateLimit` + `BreakerCheck`。
 
 ---
 
@@ -111,6 +129,18 @@ import (
     "google.golang.org/grpc"
 )
 
+opts := []grpc.ServerOption{
+    grpc.ChainUnaryInterceptor(
+        grpcinterceptors.UnaryServerInterceptor(policy, metrics),       // L1 + breaker
+        grpcinterceptors.UserUnaryServerInterceptor(policy, metrics),   // L2（infrastructure）
+        grpcinterceptors.RouteUnaryServerInterceptor(policy, metrics),  // L3
+    ),
+}
+```
+
+`app.Run` 在 gRPC 启用时默认只链接 **L1** `UnaryServerInterceptor`。L2/L3 在 `registerGRPC` 或自定义 `ServerOption` 中追加。
+
+```go
 opts := []grpc.ServerOption{
     grpc.UnaryInterceptor(grpcinterceptors.UnaryServerInterceptor(policy)),
 }
@@ -209,27 +239,45 @@ func main() {
 
 ## 典型组合：infrastructure 组合根
 
-生成工程的标准模式（Demo）：
+生成工程的标准模式（Demo，`--demo` 含 L2/L3 示例）：
 
 ```go
 // infrastructure/run.go
+func (a *App) registerHTTP(engine *gin.Engine, policy *resilience.Policy) {
+    // L2：路由链内注入 userId 后限流
+    users := engine.Group("/users")
+    users.GET("/:id",
+        func(c *gin.Context) {
+            httpmiddleware.GinContextWithUserID(c, c.Param("id"))
+        },
+        httpmiddleware.UserRateLimit(policy, nil),
+        a.getUserHandler,
+    )
+
+    // L3：昂贵 API 路由组
+    ai := engine.Group("/ai")
+    ai.Use(httpmiddleware.RouteRateLimit(policy, nil))
+    ai.POST("/chat", a.AIHandler.Chat)
+}
+
 func Run(configPath string) error {
-    cfg, err := config.Load(configPath)
-    app, err := NewApp(Config{ConfigPath: configPath})
+    cfg, _ := config.Load(configPath)
+    app, _ := NewApp(Config{ConfigPath: configPath})
 
     gblocks := gblocksapp.New(cfg).WithHTTP(app.registerHTTP)
     if cfg.Server.GRPC.Enabled {
-        gblocks = gblocks.WithGRPC(app.registerGRPC) // 必须显式注册
+        gblocks = gblocks.WithGRPC(app.registerGRPC)
     }
     return gblocks.Run(context.Background())
 }
+```
 
-// infrastructure/grpc_server.go
-func (a *App) registerGRPC(server *grpc.Server, _ *resilience.Policy) {
-    healthServer := health.NewServer()
-    grpc_health_v1.RegisterHealthServer(server, healthServer)
-    healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+```go
+// infrastructure/grpc_server.go — L2 需 metadata x-user-id
+func (a *App) registerGRPC(server *grpc.Server, policy *resilience.Policy) {
+    _ = policy
+    // app 已挂 L1；追加 L2/L3 见 grpc ChainUnaryInterceptor 示例
 }
 ```
 
-业务 Handler 在 `NewApp` 中构造，路由在 `registerHTTP` / `registerGRPC` 中绑定，保持 **handlers 不感知 HTTP 框架细节**（Demo 中 Gin handler 在 infrastructure 层做薄适配）。
+业务 Handler 在 `NewApp` 中构造，路由在 `registerHTTP` / `registerGRPC` 中绑定，保持 **handlers / domain / core 不感知限流基础设施**。
