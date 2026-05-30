@@ -1,10 +1,10 @@
-# 配置参考
+# Configuration reference
 
-Goblocks 使用 YAML 配置文件，默认路径 `config/config.yaml`。通过 [`github.com/ymhhh/go-common/config`](https://github.com/ymhhh/go-common) 加载，支持 `#include`、 `${ENV}` 与 `${a.b.c}` 引用；`GOBLOCKS_*` 环境变量在加载后覆盖部分字段。
+Goblocks uses YAML configuration, default path `config/config.yaml`. Loaded via [`github.com/ymhhh/go-common/config`](https://github.com/ymhhh/go-common) with `#include`, `${ENV}`, and `${a.b.c}` references; `GOBLOCKS_*` environment variables override fields after load.
 
-## 高级特性
+## Advanced features
 
-### 拆分配置（#include）
+### Split config (#include)
 
 ```yaml
 #include base.yaml
@@ -14,12 +14,12 @@ server:
     addr: ":8080"
 ```
 
-### 占位符
+### Placeholders
 
-- `${OPENAI_API_KEY}` — 环境变量
-- `${server.http.addr}` — 同文件内交叉引用
+- `${OPENAI_API_KEY}` — environment variable
+- `${server.http.addr}` — cross-reference within the same file
 
-## 完整示例
+## Full example
 
 ```yaml
 server:
@@ -57,7 +57,7 @@ resilience:
         path: /api/v1/ai/chat
         rps: 5
         burst: 10
-    # 兼容旧版（等价于 global）:
+    # Legacy (equivalent to global):
     # rps: 100
     # burst: 200
 ai:
@@ -75,74 +75,86 @@ logger:
 
 ### server.http
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `addr` | string | `:8080` | HTTP/HTTPS 监听地址 |
-| `tls.enabled` | bool | `false` | 启用 TLS（同时开启 HTTP/2 ALPN） |
-| `tls.cert_file` | string | — | TLS 证书路径 |
-| `tls.key_file` | string | — | TLS 私钥路径 |
-| `h3.enabled` | bool | `false` | 启用 HTTP/3（需 TLS） |
-| `h3.addr` | string | `:8443` | HTTP/3 QUIC 监听地址 |
-| `health.enabled` | bool | `true` | 注册 `/health` 与 `/ready` 探针 |
-| `health.liveness_path` | string | `/health` | 存活探针路径 |
-| `health.readiness_path` | string | `/ready` | 就绪探针路径（检查熔断器与 gRPC 状态） |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `addr` | string | `:8080` | HTTP/HTTPS listen address |
+| `tls.enabled` | bool | `false` | Enable TLS (HTTP/2 ALPN) |
+| `tls.cert_file` | string | — | TLS certificate path |
+| `tls.key_file` | string | — | TLS private key path |
+| `h3.enabled` | bool | `false` | Enable HTTP/3 (requires TLS) |
+| `h3.addr` | string | `:8443` | HTTP/3 QUIC listen address |
+| `health.enabled` | bool | `true` | Register `/health` and `/ready` probes |
+| `health.liveness_path` | string | `/health` | Liveness probe path |
+| `health.readiness_path` | string | `/ready` | Readiness probe path (breaker and gRPC state) |
 
 ### server.grpc
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `enabled` | bool | `true` | 是否启动 gRPC 服务（需在 `infrastructure/run.go` 中调用 `WithGRPC(registerGRPC)`） |
-| `addr` | string | `:9090` | gRPC 监听地址 |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Start gRPC server (call `WithGRPC(registerGRPC)` in `infrastructure/run.go`) |
+| `addr` | string | `:9090` | gRPC listen address |
 
-> HTTP 与 gRPC 使用不同端口，不可合并为同一 listener。
+> HTTP and gRPC use different ports; they cannot share one listener.
 
 ## resilience
 
-### breaker（熔断）
+### breaker
 
-基于 [sony/gobreaker](https://github.com/sony/gobreaker)。连续失败达到 `consecutive_failures` 触发打开（默认 3）。
+Based on [sony/gobreaker](https://github.com/sony/gobreaker). Opens after `consecutive_failures` consecutive failures (default 3).
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `max_requests` | uint32 | `3` | 半开状态允许的最大请求数 |
-| `consecutive_failures` | uint32 | `3` | 连续失败次数达到后打开熔断 |
-| `interval` | duration | `60s` | 统计窗口（关闭状态下重置计数） |
-| `timeout` | duration | `30s` | 打开状态持续时间，之后进入半开 |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `max_requests` | uint32 | `3` | Max requests allowed in half-open state |
+| `consecutive_failures` | uint32 | `3` | Consecutive failures before opening |
+| `interval` | duration | `60s` | Stats window (resets in closed state) |
+| `timeout` | duration | `30s` | Open state duration before half-open |
 
-### rate_limit（分层限流）
+### rate_limit (layered)
 
-三层限流模型：**L1 全局（服务/集群）→ L2 用户 → L3 路由/API**。框架 `app` 默认挂载 **L1** 与 **L3（config 配置了 `routes` 时）**；L2 在业务 `infrastructure/registerHTTP` 中挂载。
+Three layers: **L1 global (service/cluster) → L2 user → L3 route/API**. The framework `app` mounts **L1** and **L3 (when `routes` is configured)** by default; L2 is mounted in business `infrastructure/registerHTTP`.
 
-后端：`memory`（单进程/开发）或 `redis`（多 Pod 分布式，基于 GCRA）。
+Backend: `memory` (single process / dev) or `redis` (multi-Pod, GCRA).
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `backend` | string | `memory` | `memory` 或 `redis` |
-| `global.rps` | float64 | `100` | L1 全局限流 RPS |
-| `global.burst` | int | `200` | L1 突发容量 |
-| `redis.addr` | string | — | Redis 地址（`backend: redis` 时必填） |
-| `redis.key_prefix` | string | `goblocks:rl:` | Redis key 前缀 |
-| `user.enabled` | bool | `false` | 是否启用 L2（需在 infrastructure 挂载 middleware） |
-| `user.default_rps` | float64 | `20` | L2 每用户默认 RPS |
-| `user.burst` | int | `40` | L2 每用户突发容量 |
-| `routes` | list | — | L3 路由规则（method + path + rps + burst） |
-| `rps` | float64 | — | **已废弃**，映射到 `global.rps` |
-| `burst` | int | — | **已废弃**，映射到 `global.burst` |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `backend` | string | `memory` | `memory` or `redis` |
+| `global.rps` | float64 | `100` | L1 global RPS |
+| `global.burst` | int | `200` | L1 burst capacity |
+| `redis.addr` | string | — | Redis address (required when `backend: redis`) |
+| `redis.key_prefix` | string | `goblocks:rl:` | Redis key prefix |
+| `user.enabled` | bool | `false` | Enable L2 (mount middleware in infrastructure) |
+| `user.default_rps` | float64 | `20` | L2 default RPS per user |
+| `user.burst` | int | `40` | L2 burst per user |
+| `routes` | list | — | L3 route rules (method + path + rps + burst) |
+| `rps` | float64 | — | **Deprecated**, maps to `global.rps` |
+| `burst` | int | — | **Deprecated**, maps to `global.burst` |
 
-HTTP 超限返回 **429**；gRPC 超限返回 **ResourceExhausted**；熔断打开 HTTP 返回 **503**，gRPC 返回 **Unavailable**。
+HTTP rate limit exceeded → **429**; gRPC → **ResourceExhausted**; breaker open → HTTP **503**, gRPC **Unavailable**.
 
-相关环境变量见本文 [环境变量](#环境变量) 一节。
+See [Environment variables](#environment-variables) below.
 
-OpenAI 兼容 HTTP API，底层使用 [go-openai](https://github.com/sashabaranov/go-openai)。
+#### routes rules (L3)
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `enabled` | bool | `false` | 是否初始化 AI Client |
-| `base_url` | string | `https://api.openai.com/v1` | API Base URL |
-| `api_key` | string | — | API Key，支持 `${ENV_VAR}` 占位 |
-| `model` | string | `gpt-4o-mini` | 默认模型 |
+| Field | Description |
+|-------|-------------|
+| `method` | HTTP verb (`GET` / `POST` …) or `GRPC` for gRPC |
+| `path` | HTTP: Gin route template (e.g. `/ai/chat`); gRPC: FullMethod (e.g. `/my.v1.Service/Method`) |
+| `rps` / `burst` | Token bucket for this route |
 
-### AI 接入示例
+When `routes` is configured, `app.Run` mounts L3 automatically; no duplicate registration in code. See the [rate-limiting guide (中文)](zh/rate-limiting.md).
+
+## ai
+
+OpenAI-compatible HTTP API via [go-openai](https://github.com/sashabaranov/go-openai).
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Initialize AI client |
+| `base_url` | string | `https://api.openai.com/v1` | API base URL |
+| `api_key` | string | — | API key; supports `${ENV_VAR}` |
+| `model` | string | `gpt-4o-mini` | Default model |
+
+### AI provider examples
 
 **OpenAI**
 
@@ -154,7 +166,7 @@ ai:
   model: "gpt-4o-mini"
 ```
 
-**Ollama（本地）**
+**Ollama (local)**
 
 ```yaml
 ai:
@@ -176,59 +188,59 @@ ai:
 
 ## logger
 
-基于 [`github.com/ymhhh/go-common/logger`](https://github.com/ymhhh/go-common)（logrus）。
+Via [`github.com/ymhhh/go-common/logger`](https://github.com/ymhhh/go-common) (logrus).
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `level` | string | `info` | 日志级别：debug/info/warn/error |
-| `format` | string | `text` | `text` 或 `json` |
-| `output` | string | `stderr` | `stdout`/`stderr`/`discard`/文件路径/`file:/path` |
-| `reportCaller` | bool | `false` | 是否记录调用方 |
-| `file.path` | string | — | 文件输出路径 |
-| `file.rotate.enabled` | bool | `false` | 启用 lumberjack 轮转 |
-| `file.rotate.maxSizeMB` | int | `100` | 单文件最大 MB |
-| `file.rotate.maxBackups` | int | `7` | 保留备份数 |
-| `file.rotate.maxAgeDays` | int | `7` | 保留天数 |
-| `text.disableColors` | bool | `false` | text 格式禁用颜色 |
-| `text.fullTimestamp` | bool | `false` | text 格式完整时间戳 |
-| `json.prettyPrint` | bool | `false` | JSON 格式化输出 |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `level` | string | `info` | Log level: debug/info/warn/error |
+| `format` | string | `text` | `text` or `json` |
+| `output` | string | `stderr` | `stdout`/`stderr`/`discard`/file path/`file:/path` |
+| `reportCaller` | bool | `false` | Log caller |
+| `file.path` | string | — | File output path |
+| `file.rotate.enabled` | bool | `false` | Enable lumberjack rotation |
+| `file.rotate.maxSizeMB` | int | `100` | Max size per file (MB) |
+| `file.rotate.maxBackups` | int | `7` | Backup count |
+| `file.rotate.maxAgeDays` | int | `7` | Retention days |
+| `text.disableColors` | bool | `false` | Disable colors in text format |
+| `text.fullTimestamp` | bool | `false` | Full timestamp in text format |
+| `json.prettyPrint` | bool | `false` | Pretty-print JSON |
 
 ## metrics
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `enabled` | bool | `true` | 是否采集并暴露 Prometheus 指标 |
-| `path` | string | `/metrics` | 指标 HTTP 路径 |
-| `addr` | string | — | 独立 metrics 监听地址（设则不与业务 HTTP 共端口） |
-| `auth_token` | string | — | Bearer token 保护 metrics 端点 |
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Collect and expose Prometheus metrics |
+| `path` | string | `/metrics` | Metrics HTTP path |
+| `addr` | string | — | Dedicated metrics listen address (separate from app HTTP) |
+| `auth_token` | string | — | Bearer token for metrics endpoint |
 
-详见 [观测指标](metrics.md)。
+See [Metrics](metrics.md).
 
-## 环境变量
+## Environment variables
 
-| 变量 | 覆盖字段 |
-|------|----------|
+| Variable | Overrides |
+|----------|-----------|
 | `GOBLOCKS_HTTP_ADDR` | `server.http.addr` |
 | `GOBLOCKS_GRPC_ADDR` | `server.grpc.addr` |
 | `GOBLOCKS_AI_API_KEY` | `ai.api_key` |
 | `GOBLOCKS_AI_BASE_URL` | `ai.base_url` |
 | `GOBLOCKS_LOGGER_LEVEL` | `logger.level` |
-| `GOBLOCKS_LOG_LEVEL` | `logger.level`（已废弃，仍兼容） |
+| `GOBLOCKS_LOG_LEVEL` | `logger.level` (deprecated, still supported) |
 | `GOBLOCKS_METRICS_ENABLED` | `metrics.enabled` |
 | `GOBLOCKS_REDIS_ADDR` | `resilience.rate_limit.redis.addr` |
 | `GOBLOCKS_RATE_LIMIT_BACKEND` | `resilience.rate_limit.backend` |
 
-### 占位符展开
+### Placeholder expansion
 
-配置中 `api_key: "${OPENAI_API_KEY}"` 由 go-common 在加载时解析为环境变量值。加载完成后，`GOBLOCKS_*` 变量仍可覆盖对应字段（优先级更高）。
+`api_key: "${OPENAI_API_KEY}"` is resolved by go-common at load time. After load, `GOBLOCKS_*` variables still override (higher priority).
 
-## HTTP/2 与 HTTP/3 启用步骤
+## Enabling HTTP/2 and HTTP/3
 
 ### HTTP/2
 
-1. 准备 TLS 证书
-2. 设置 `server.http.tls.enabled: true` 并填写 `cert_file`、`key_file`
-3. 客户端使用 HTTPS 访问，ALPN 自动协商 h2
+1. Prepare TLS certificates
+2. Set `server.http.tls.enabled: true` and set `cert_file`, `key_file`
+3. Clients use HTTPS; ALPN negotiates h2
 
 ```bash
 curl --http2 -k https://localhost:8080/health
@@ -236,13 +248,13 @@ curl --http2 -k https://localhost:8080/health
 
 ### HTTP/3
 
-1. 完成 HTTP/2 的 TLS 配置（H3 复用同一证书）
-2. 设置 `server.http.h3.enabled: true`
-3. 确保防火墙放行 UDP 端口（默认 `:8443`）
+1. Complete HTTP/2 TLS setup (H3 reuses the same certs)
+2. Set `server.http.h3.enabled: true`
+3. Allow UDP port in firewall (default `:8443`)
 
-> 生产环境 HTTP/3 部署需考虑 UDP 负载均衡与 CDN 兼容性，默认建议关闭。
+> Production HTTP/3 needs UDP load balancing and CDN compatibility; disabled by default is recommended.
 
-## 代码加载
+## Loading in code
 
 ```go
 cfg, err := config.Load("config/config.yaml")
@@ -250,6 +262,6 @@ if err != nil {
     log.Fatal(err)
 }
 
-// 或使用默认值
+// Or use defaults
 cfg := config.Default()
 ```

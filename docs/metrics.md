@@ -1,27 +1,27 @@
-# 观测指标
+# Metrics
 
-Goblocks 内置 [Prometheus](https://prometheus.io/) 指标，默认开启，通过 HTTP 端点暴露。
+Goblocks includes [Prometheus](https://prometheus.io/) metrics, enabled by default, exposed over HTTP.
 
-## 配置
+## Configuration
 
 ```yaml
 metrics:
   enabled: true
   path: "/metrics"
-  addr: ":9091"          # 可选：独立 admin 端口，不暴露在业务 HTTP 上
-  auth_token: ""         # 可选：Bearer token 保护 /metrics
+  addr: ":9091"          # optional: dedicated admin port, not on app HTTP
+  auth_token: ""         # optional: Bearer token for /metrics
 ```
 
-| 字段 | 默认值 | 说明 |
-|------|--------|------|
-| `enabled` | `true` | 是否采集并暴露指标 |
-| `path` | `/metrics` | Prometheus scrape 路径 |
-| `addr` | — | 非空时在独立端口暴露 metrics（推荐生产环境） |
-| `auth_token` | — | 非空时要求 `Authorization: Bearer <token>` |
+| Field | Default | Description |
+|-------|---------|-------------|
+| `enabled` | `true` | Collect and expose metrics |
+| `path` | `/metrics` | Prometheus scrape path |
+| `addr` | — | When set, expose metrics on a separate port (recommended in production) |
+| `auth_token` | — | When set, requires `Authorization: Bearer <token>` |
 
-环境变量：`GOBLOCKS_METRICS_ENABLED=true|false`
+Environment variable: `GOBLOCKS_METRICS_ENABLED=true|false`
 
-## 抓取示例
+## Scrape example
 
 ```yaml
 # prometheus.yml
@@ -36,65 +36,65 @@ scrape_configs:
 curl http://localhost:8080/metrics
 ```
 
-## 指标清单
+## Metric catalog
 
 ### HTTP
 
-| 指标 | 类型 | 标签 | 说明 |
-|------|------|------|------|
-| `goblocks_http_requests_total` | Counter | `method`, `path`, `status` | HTTP 请求总数 |
-| `goblocks_http_request_duration_seconds` | Histogram | `method`, `path` | HTTP 请求延迟 |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `goblocks_http_requests_total` | Counter | `method`, `path`, `status` | Total HTTP requests |
+| `goblocks_http_request_duration_seconds` | Histogram | `method`, `path` | HTTP request latency |
 
-`path` 使用 Gin 路由模板（如 `/users/:id`），避免高基数。
+`path` uses Gin route templates (e.g. `/users/:id`) to avoid high cardinality.
 
 ### gRPC
 
-| 指标 | 类型 | 标签 | 说明 |
-|------|------|------|------|
-| `goblocks_grpc_server_handled_total` | Counter | `grpc_method`, `grpc_code` | gRPC 请求总数 |
-| `goblocks_grpc_server_handling_seconds` | Histogram | `grpc_method` | gRPC 处理延迟 |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `goblocks_grpc_server_handled_total` | Counter | `grpc_method`, `grpc_code` | Total gRPC requests |
+| `goblocks_grpc_server_handling_seconds` | Histogram | `grpc_method` | gRPC handling latency |
 
 ### Resilience
 
-| 指标 | 类型 | 标签 | 说明 |
-|------|------|------|------|
-| `goblocks_resilience_rate_limit_rejected_total` | Counter | `protocol`, `scope` | 限流拒绝次数；`scope` 为 `global` / `user` / `route` |
-| `goblocks_resilience_circuit_breaker_rejected_total` | Counter | `protocol` | 熔断拒绝次数 |
-| `goblocks_resilience_circuit_breaker_state` | Gauge | `name` | 熔断器状态：0=closed, 1=half-open, 2=open |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `goblocks_resilience_rate_limit_rejected_total` | Counter | `protocol`, `scope` | Rate limit rejections; `scope` is `global` / `user` / `route` |
+| `goblocks_resilience_circuit_breaker_rejected_total` | Counter | `protocol` | Circuit breaker rejections |
+| `goblocks_resilience_circuit_breaker_state` | Gauge | `name` | Breaker state: 0=closed, 1=half-open, 2=open |
 
 ### AI
 
-| 指标 | 类型 | 标签 | 说明 |
-|------|------|------|------|
-| `goblocks_ai_requests_total` | Counter | `model`, `status` | AI 请求总数 |
-| `goblocks_ai_request_duration_seconds` | Histogram | `model` | AI 请求延迟 |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `goblocks_ai_requests_total` | Counter | `model`, `status` | Total AI requests |
+| `goblocks_ai_request_duration_seconds` | Histogram | `model` | AI request latency |
 
-`status` 取值：`success`、`error`、`rate_limited`、`circuit_open`
+`status` values: `success`, `error`, `rate_limited`, `circuit_open`
 
-## 常用 PromQL
+## Common PromQL
 
 ```promql
 # HTTP QPS
 rate(goblocks_http_requests_total[1m])
 
-# HTTP P99 延迟
+# HTTP P99 latency
 histogram_quantile(0.99, rate(goblocks_http_request_duration_seconds_bucket[5m]))
 
-# 限流拒绝率（按层级）
+# Rate limit rejections by layer
 rate(goblocks_resilience_rate_limit_rejected_total[1m])
 rate(goblocks_resilience_rate_limit_rejected_total{scope="user"}[1m])
 
-# 熔断器是否打开
+# Circuit breaker open
 goblocks_resilience_circuit_breaker_state == 2
 
-# AI 错误率
+# AI error rate
 rate(goblocks_ai_requests_total{status="error"}[5m])
 / rate(goblocks_ai_requests_total[5m])
 ```
 
-## 代码接入
+## Programmatic access
 
-指标由 `app.App` 自动装配。若需自定义采集：
+Metrics are wired by `app.App`. For custom instrumentation:
 
 ```go
 import "github.com/ymhhh/goblocks/metrics"
@@ -103,4 +103,4 @@ reg := metrics.NewRegistry()
 reg.HTTPRequestsTotal.WithLabelValues("GET", "/custom", "200").Inc()
 ```
 
-禁用指标：`metrics.enabled: false`，此时 `app.Metrics()` 返回 `nil`。
+Disable metrics: `metrics.enabled: false`; then `app.Metrics()` returns `nil`.

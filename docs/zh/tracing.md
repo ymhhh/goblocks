@@ -1,6 +1,6 @@
-# Distributed tracing (optional)
+# 分布式追踪（可选）
 
-Goblocks does not bundle an OpenTelemetry SDK. Use **optional hooks** to plug in your own OTel middleware.
+Goblocks 不内置 OpenTelemetry SDK，通过 **可选 hook** 接入用户自选的 OTel 中间件。
 
 ## HTTP
 
@@ -14,7 +14,7 @@ app.New(cfg).
     WithHTTPTracing(otelgin.Middleware("my-service"))
 ```
 
-Middleware from `WithHTTPTracing` runs after Recovery / metrics and before resilience.
+`WithHTTPTracing` 注入的中间件在 Recovery / metrics 之后、resilience 之前执行。
 
 ## gRPC
 
@@ -30,7 +30,7 @@ app.New(cfg).
     )
 ```
 
-## Notes
+## 说明
 
-- Initialize your own OTel TracerProvider and exporter (Jaeger, OTLP, etc.)
-- Complements Prometheus metrics; does not duplicate collection
+- 需自行初始化 OTel TracerProvider 与 exporter（Jaeger、OTLP 等）
+- 与 Prometheus metrics 互补，不重复采集

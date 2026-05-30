@@ -1,41 +1,41 @@
-# 开发指南
+# Development guide
 
-本文面向 goblocks **框架库**贡献者与维护者。脚手架 CLI 开发见 [goblocks-cli](https://github.com/ymhhh/goblocks-cli)。
+For **goblocks framework** contributors and maintainers. Scaffold CLI development: [goblocks-cli](https://github.com/ymhhh/goblocks-cli).
 
-## 环境要求
+## Requirements
 
-- Go >= 1.22（CI 在 1.22 / 1.23 上验证；`go.mod` 声明最低版本 1.22）
-- Make（可选）
+- Go >= 1.22 (CI on 1.22 / 1.23; `go.mod` minimum 1.22)
+- Make (optional)
 
-## 仓库结构
+## Repository layout
 
 ```
 goblocks/
-├── app/              应用生命周期（默认 L1 + breaker）
-├── config/           配置加载（resilience.rate_limit 分层 schema）
-├── resilience/       熔断 + RateLimiter（memory/redis）+ Policy
+├── app/              Application lifecycle (L1 + L3 by default)
+├── config/           Config loading (layered rate_limit schema)
+├── resilience/       Breaker + RateLimiter (memory/redis) + Policy
 │   ├── ratelimiter.go / memory_ratelimiter.go / redis_ratelimiter.go
 │   ├── keyed.go / factory.go / policy.go
-│   └── limiter.go    旧版单桶 helper（测试兼容）
-├── http/             HTTP 服务
-│   └── middleware/   GlobalRateLimit、UserRateLimit、RouteRateLimit
-├── grpc/             gRPC 服务
+│   └── limiter.go    Legacy single-bucket helper (tests)
+├── http/             HTTP server
+│   └── middleware/   GlobalRateLimit, UserRateLimit, RouteRateLimit
+├── grpc/             gRPC server
 │   └── interceptors/ L1/L2/L3 unary interceptors
-├── ai/               AI 客户端（出站 L1 + breaker）
-├── metrics/          Prometheus（scope label）
-├── docs/             说明文档
+├── ai/               AI client (outbound L1 + breaker)
+├── metrics/          Prometheus (scope label)
+├── docs/             Documentation
 ├── Makefile
 └── README.md
 ```
 
-## 常用命令
+## Common commands
 
 ```bash
 make test     # go test ./... -race -count=1
 make lint     # go vet ./... && go fmt ./...
 ```
 
-## 测试
+## Testing
 
 ```bash
 go test ./config/... -v
@@ -44,51 +44,51 @@ go test ./metrics/... -v
 go test ./... -race -count=1
 ```
 
-## 添加新依赖
+## Adding dependencies
 
 ```bash
 go get example.com/foo
 go mod tidy
 ```
 
-框架库应保持依赖精简，新增依赖需在 PR 中说明理由。
+Keep framework dependencies minimal; justify new deps in PRs.
 
-## 发布流程
+## Release process
 
-1. 确保 `go test ./... -race` 通过
-2. 更新 README / docs 如有 API 变更
-3. 打 tag：`git tag v0.2.0`
-4. 用户引用：
+1. Ensure `go test ./... -race` passes
+2. Update README / docs for API changes
+3. Tag: `git tag v0.3.0`
+4. Users reference:
 
 ```bash
-go get github.com/ymhhh/goblocks@v0.2.0
+go get github.com/ymhhh/goblocks@v0.3.0
 ```
 
-CLI 发布在 [goblocks-cli](https://github.com/ymhhh/goblocks-cli) 仓库，建议与框架版本号对齐。
+CLI releases in [goblocks-cli](https://github.com/ymhhh/goblocks-cli); align version with framework when possible.
 
-## 本地联调（框架 + CLI）
+## Local dev (framework + CLI)
 
 ```bash
 cd /path/to/github.com/ymhhh
 go work init ./goblocks ./goblocks-cli
 ```
 
-CLI 集成测试需设置 `GOBLOCKS_PATH` 指向本地 goblocks 仓库：
+CLI integration tests need `GOBLOCKS_PATH` pointing at local goblocks:
 
 ```bash
 export GOBLOCKS_PATH=/path/to/goblocks
 cd goblocks-cli && make test-integration
 ```
 
-## 代码规范
+## Code conventions
 
-- 公开 API 需有 godoc 注释
-- 新功能需附带单元测试
-- 使用 [`github.com/ymhhh/go-common/logger`](https://github.com/ymhhh/go-common) 作为默认日志
+- Public APIs need godoc comments
+- New features need unit tests
+- Default logging: [`github.com/ymhhh/go-common/logger`](https://github.com/ymhhh/go-common)
 
-## 已知限制
+## Known limitations
 
-- 无服务注册发现（Consul/Etcd）
-- 限流 Redis 后端需独立 Redis；`memory` 后端仅单进程有效
-- gRPC 与 HTTP 不可同端口
-- HTTP/3 需额外 UDP 端口与 TLS
+- No service discovery (Consul/Etcd)
+- Redis rate limit needs a dedicated Redis; `memory` backend is single-process only
+- gRPC and HTTP cannot share a port
+- HTTP/3 requires extra UDP port and TLS

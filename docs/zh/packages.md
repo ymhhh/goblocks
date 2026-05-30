@@ -1,8 +1,8 @@
-# Package API reference
+# 包 API 参考
 
 ## config
 
-Load YAML configuration with environment variable overrides.
+加载 YAML 配置，支持环境变量覆盖。
 
 ```go
 import "github.com/ymhhh/goblocks/config"
@@ -11,34 +11,34 @@ cfg, err := config.Load("config/config.yaml")
 defaults := config.Default()
 ```
 
-Main types: `Config`, `ServerConfig`, `ResilienceConfig`, `AIConfig`.
+主要类型：`Config`、`ServerConfig`、`ResilienceConfig`、`AIConfig`。
 
-See [Configuration reference](configuration.md).
+详见 [配置参考](configuration.md)。
 
 ---
 
 ## resilience
 
-Breaker + **layered rate limiting** (L1 global / L2 user / L3 route).
+熔断 + **分层限流**（L1 全局 / L2 用户 / L3 路由）统一抽象。
 
-### RateLimiter and backends
+### RateLimiter 与后端
 
 ```go
-// Check allowance by key + rule (memory or redis)
+// 接口：按 key + rule 检查（memory 或 redis）
 type RateLimiter interface {
     Allow(ctx context.Context, key string, rule LimitRule) (bool, error)
 }
 
 backend, err := resilience.NewRateLimiterBackend(cfg.Resilience.RateLimit)
-// memory: in-process token bucket; redis: GCRA, key prefix from config redis.key_prefix
+// memory: 进程内令牌桶；redis: GCRA，key 前缀见 config redis.key_prefix
 ```
 
-Key conventions (`resilience/keyed.go`):
+Key 约定（`resilience/keyed.go`）：
 
-| Layer | Key example |
-|-------|-------------|
+| 层 | Key 示例 |
+|----|----------|
 | L1 | `global` |
-| L2 | `user:alice` (or `user:anonymous` when no userId) |
+| L2 | `user:alice`（无 userId 时为 `user:anonymous`） |
 | L3 | `route:POST:/ai/chat` |
 
 ### Policy
@@ -46,37 +46,37 @@ Key conventions (`resilience/keyed.go`):
 ```go
 import "github.com/ymhhh/goblocks/resilience"
 
-// From config (handle error; redis backend needs valid addr)
+// 从配置创建（需处理 error；redis backend 需有效 addr）
 policy, err := resilience.NewPolicyFromConfig(cfg.Resilience)
 
-// Layered checks
+// 分层限流检查
 policy.AllowGlobal(ctx)                       // L1
-policy.AllowUser(ctx, "")                     // L2 (context or explicit key)
-policy.AllowRoute(ctx, "POST", "/ai/chat")    // L3 (when config route exists)
+policy.AllowUser(ctx, "")                     // L2
+policy.AllowRoute(ctx, "POST", "/ai/chat")    // L3
 
-// User identity (HTTP)
+// 用户身份（HTTP）
 ctx = resilience.ContextWithUserID(ctx, userID)
 key := resilience.UserKeyFromContext(ctx)
 
-// Breaker wrap (outbound / business execution)
+// 熔断包裹（出站/业务执行）
 result, err := policy.Execute(func() (any, error) {
     return doSomething()
 })
-// err may be ErrCircuitOpen
+// err 可能为 ErrCircuitOpen
 ```
 
-### Errors
+### 错误
 
-| Error | Meaning |
-|-------|---------|
-| `resilience.ErrRateLimited` | Token bucket rejected |
-| `resilience.ErrCircuitOpen` | Circuit breaker open |
+| 错误 | 含义 |
+|------|------|
+| `resilience.ErrRateLimited` | 令牌桶拒绝 |
+| `resilience.ErrCircuitOpen` | 熔断器打开 |
 
 ---
 
 ## http
 
-Gin wrapper: HTTP/1, HTTP/2 over TLS, optional HTTP/3.
+Gin 封装，支持 HTTP/1、TLS 下 HTTP/2、可选 HTTP/3。
 
 ```go
 import (
@@ -106,15 +106,15 @@ defer srv.Shutdown()
 ```go
 import httpmiddleware "github.com/ymhhh/goblocks/http/middleware"
 
-engine.Use(httpmiddleware.GlobalRateLimit(policy, metrics)) // L1 (app default)
+engine.Use(httpmiddleware.GlobalRateLimit(policy, metrics)) // L1（app 默认已挂载）
 engine.Use(httpmiddleware.BreakerCheck(policy, metrics))
-engine.Use(httpmiddleware.UserRateLimit(policy, metrics))     // L2 (infrastructure)
-engine.Use(httpmiddleware.RouteRateLimit(policy, metrics))    // L3 (app auto when config routes)
-// Or custom key:
+engine.Use(httpmiddleware.UserRateLimit(policy, metrics))   // L2（infrastructure 挂载）
+engine.Use(httpmiddleware.RouteRateLimit(policy, metrics))    // L3（config routes 时 app 自动挂载）
+// 或自定义 key：
 engine.Use(httpmiddleware.RateLimitByKey(keyFn, rule, scope, policy, metrics))
 ```
 
-`app.App` mounts `GlobalRateLimit` + `BreakerCheck` by default; `RouteRateLimit` when config has `routes`.
+`app.App` 默认挂载 `GlobalRateLimit` + `BreakerCheck`；config 存在 `routes` 时自动挂载 `RouteRateLimit`。
 
 ---
 
@@ -132,20 +132,19 @@ import (
 opts := []grpc.ServerOption{
     grpc.ChainUnaryInterceptor(
         grpcinterceptors.UnaryServerInterceptor(policy, metrics),       // L1 + breaker
-        grpcinterceptors.UserUnaryServerInterceptor(policy, metrics),   // L2 (infrastructure)
-        grpcinterceptors.RouteUnaryServerInterceptor(policy, metrics),  // L3 (app auto when config routes)
+        grpcinterceptors.UserUnaryServerInterceptor(policy, metrics),   // L2（infrastructure）
+        grpcinterceptors.RouteUnaryServerInterceptor(policy, metrics),  // L3
     ),
 }
 ```
 
-`app.Run` mounts **L1** `UnaryServerInterceptor` and **L3** `RouteUnaryServerInterceptor` (when config has `routes`) by default. Add **L2** in `registerGRPC` or custom `ServerOption`.
+`app.Run` 默认挂载 **L1** 与 **L3**（config 有 `routes` 时）；**L2** 在 `registerGRPC` 中追加。
 
 ```go
 opts := []grpc.ServerOption{
     grpc.UnaryInterceptor(grpcinterceptors.UnaryServerInterceptor(policy)),
 }
 srv := gblocksgrpc.NewServer(gblocksgrpc.Config{Addr: ":9090"}, opts...)
-// srv.GRPCServer() to register pb services
 srv.Start()
 defer srv.Shutdown()
 ```
@@ -163,7 +162,7 @@ conn, err := gblocksgrpc.Dial(
 
 ## ai
 
-OpenAI-compatible Chat API.
+OpenAI 兼容 Chat 接口。
 
 ```go
 import "github.com/ymhhh/goblocks/ai"
@@ -172,7 +171,7 @@ client := ai.NewOpenAIClient(ai.OpenAIConfig{
     BaseURL: "https://api.openai.com/v1",
     APIKey:  os.Getenv("OPENAI_API_KEY"),
     Model:   "gpt-4o-mini",
-    Policy:  policy,  // optional: breaker and rate limit
+    Policy:  policy,
 })
 
 resp, err := client.Chat(ctx, ai.ChatRequest{
@@ -180,16 +179,15 @@ resp, err := client.Chat(ctx, ai.ChatRequest{
         {Role: "user", Content: "Hello"},
     },
 })
-// resp.Content, resp.Model
 ```
 
-`ai.Client` interface supports mocks in tests.
+`ai.Client` 接口便于测试时注入 Mock。
 
 ---
 
 ## app
 
-Application lifecycle; recommended in `infrastructure/run.go`.
+应用生命周期编排，推荐在 `infrastructure/run.go` 中使用。
 
 ```go
 import (
@@ -212,7 +210,6 @@ func main() {
             // registerGRPCServices(server)
         })
 
-    // AI client (requires cfg.AI.Enabled = true)
     aiClient := application.AIClient()
 
     if err := application.Run(context.Background()); err != nil {
@@ -222,29 +219,28 @@ func main() {
 }
 ```
 
-### Methods
+### 主要方法
 
-| Method | Description |
-|--------|-------------|
-| `New(cfg)` | Create App, build Policy |
-| `WithHTTP(fn)` | Register HTTP routes |
-| `WithGRPC(fn)` | Register gRPC services (**required** when `server.grpc.enabled: true`) |
-| `Policy()` | Shared Policy |
-| `AIClient()` | AI client (lazy init) |
-| `Config()` | Config |
-| `Run(ctx)` | Start and block until shutdown signal |
-| `Shutdown(ctx)` | Manual shutdown |
+| 方法 | 说明 |
+|------|------|
+| `New(cfg)` | 创建 App，自动构建 Policy |
+| `WithHTTP(fn)` | 注册 HTTP 路由 |
+| `WithGRPC(fn)` | 注册 gRPC 服务（`server.grpc.enabled: true` 时**必须**调用） |
+| `Policy()` | 获取共享 Policy |
+| `AIClient()` | 获取 AI Client（lazy init） |
+| `Config()` | 获取配置 |
+| `Run(ctx)` | 启动并阻塞至信号关闭 |
+| `Shutdown(ctx)` | 手动关闭 |
 
 ---
 
-## Typical pattern: infrastructure composition root
+## 典型组合：infrastructure 组合根
 
-Standard scaffold pattern (Demo `--demo` includes L2 example):
+生成工程的标准模式（Demo `--demo` 含 L2 示例）：
 
 ```go
 // infrastructure/run.go
 func (a *App) registerHTTP(engine *gin.Engine, policy *resilience.Policy) {
-    // L2: inject userId in route chain, then rate limit
     users := engine.Group("/users")
     users.GET("/:id",
         func(c *gin.Context) {
@@ -254,29 +250,9 @@ func (a *App) registerHTTP(engine *gin.Engine, policy *resilience.Policy) {
         a.getUserHandler,
     )
 
-    // L3: configure in config resilience.rate_limit.routes; app.Run mounts automatically
-
+    // L3：在 config resilience.rate_limit.routes 中配置，app.Run 自动挂载
     engine.POST("/ai/chat", a.AIHandler.Chat)
 }
-
-func Run(configPath string) error {
-    cfg, _ := config.Load(configPath)
-    app, _ := NewApp(Config{ConfigPath: configPath})
-
-    gblocks := gblocksapp.New(cfg).WithHTTP(app.registerHTTP)
-    if cfg.Server.GRPC.Enabled {
-        gblocks = gblocks.WithGRPC(app.registerGRPC)
-    }
-    return gblocks.Run(context.Background())
-}
 ```
 
-```go
-// infrastructure/grpc_server.go — L2 needs metadata x-user-id
-func (a *App) registerGRPC(server *grpc.Server, policy *resilience.Policy) {
-    _ = policy
-    // app mounts L1 + L3 (config routes); add L2 via UserUnaryServerInterceptor + x-user-id
-}
-```
-
-Construct handlers in `NewApp`; bind routes in `registerHTTP` / `registerGRPC`. Keep **handlers / domain / core free of rate-limit infrastructure**.
+业务 Handler 在 `NewApp` 中构造，路由在 `registerHTTP` / `registerGRPC` 中绑定，保持 **handlers / domain / core 不感知限流基础设施**。

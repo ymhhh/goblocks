@@ -1,44 +1,44 @@
-# API 稳定性
+# API stability
 
-## v0.x（当前）
+## v0.x (current)
 
-- 允许 breaking change，但必须在 [CHANGELOG](../CHANGELOG.md) 中明确标注
-- 配置 YAML 键名、环境变量变更视为 breaking change
-- 小版本（v0.2.x）优先 bugfix 与向后兼容增强
+- Breaking changes allowed but must be noted in [CHANGELOG](../CHANGELOG.md)
+- YAML keys and env var changes are breaking changes
+- Patch releases (v0.2.x) prioritize bugfixes and backward-compatible improvements
 
-## 已冻结（尽量保持兼容）
+## Frozen (best-effort compatibility)
 
-| API | 说明 |
-|-----|------|
-| `config.Load(path)` | 返回 `*Config, error` |
-| `app.New(cfg)` | 构造应用 |
-| `app.(*App).WithHTTP` / `WithGRPC` | 注册路由与服务 |
-| `app.(*App).Run(ctx)` | 启动与优雅关闭 |
-| `resilience.NewPolicyFromConfig` | 从配置创建策略，返回 `(*Policy, error)` |
+| API | Description |
+|-----|-------------|
+| `config.Load(path)` | Returns `*Config, error` |
+| `app.New(cfg)` | Construct application |
+| `app.(*App).WithHTTP` / `WithGRPC` | Register routes and services |
+| `app.(*App).Run(ctx)` | Start and graceful shutdown |
+| `resilience.NewPolicyFromConfig` | Build policy from config; returns `(*Policy, error)` |
 
-### 分层限流（v0.3+）
+### Layered rate limiting (v0.3+)
 
-| API | 层 | 挂载位置 |
-|-----|-----|----------|
-| `http/middleware.GlobalRateLimit` | L1 | `app.Run` 默认 |
-| `http/middleware.UserRateLimit` | L2 | 业务 `infrastructure` |
-| `http/middleware.RouteRateLimit` | L3 | `app.Run`（config 有 `routes` 时） |
-| `grpc/interceptors.UnaryServerInterceptor` | L1 | `app.Run` 默认 |
-| `grpc/interceptors.UserUnaryServerInterceptor` | L2 | 业务 infrastructure |
-| `grpc/interceptors.RouteUnaryServerInterceptor` | L3 | `app.Run`（config 有 `routes` 时） |
+| API | Layer | Mount location |
+|-----|-------|----------------|
+| `http/middleware.GlobalRateLimit` | L1 | `app.Run` default |
+| `http/middleware.UserRateLimit` | L2 | Business `infrastructure` |
+| `http/middleware.RouteRateLimit` | L3 | `app.Run` (when config has `routes`) |
+| `grpc/interceptors.UnaryServerInterceptor` | L1 | `app.Run` default |
+| `grpc/interceptors.UserUnaryServerInterceptor` | L2 | Business infrastructure |
+| `grpc/interceptors.RouteUnaryServerInterceptor` | L3 | `app.Run` (when config has `routes`) |
 
-配置 `resilience.rate_limit` 新增 `global` / `user` / `routes` / `backend`；顶层 `rps`/`burst` 仍兼容。
+Config `resilience.rate_limit` adds `global` / `user` / `routes` / `backend`; top-level `rps`/`burst` remain compatible.
 
-## v1.0 目标
+## v1.0 goals
 
-- 冻结上述公开 API 签名
-- semver 严格遵循 MAJOR.MINOR.PATCH
-- 配置 schema 提供迁移指南与兼容期
+- Freeze public API signatures above
+- Strict semver MAJOR.MINOR.PATCH
+- Config schema migration guide and compatibility period
 
-## 实验性 API
+## Experimental APIs
 
-以下 API 可能在 minor 版本中调整：
+May change in minor releases:
 
 - `WithHTTPTracing` / `WithGRPCTracing`
-- `server.http.health.*` 探针行为
+- `server.http.health.*` probe behavior
 - `metrics.addr` / `metrics.auth_token`

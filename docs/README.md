@@ -1,22 +1,22 @@
-# Goblocks 文档
+# Goblocks documentation
 
-Goblocks 是 Go 语言服务端框架，提供 HTTP（H1/H2/H3）、gRPC、OpenAI 兼容 AI 客户端，以及统一的熔断、**分层限流**（L1/L2/L3）与 Prometheus 指标。
+Goblocks is a Go server framework: HTTP (H1/H2/H3), gRPC, OpenAI-compatible AI client, unified breaker and **layered rate limiting** (L1/L2/L3), and Prometheus metrics.
 
-脚手架 CLI 位于独立仓库 **[goblocks-cli](https://github.com/ymhhh/goblocks-cli)**，命令为 `goblocks new`。
+The scaffold CLI is in **[goblocks-cli](https://github.com/ymhhh/goblocks-cli)** (`goblocks new`).
 
-## 特性概览
+## Feature overview
 
-| 模块 | 说明 |
-|------|------|
-| HTTP | Gin 封装，TLS 下 HTTP/2，可选 HTTP/3 |
-| gRPC | Server / Client，Unary Interceptor 接入 resilience |
-| AI | OpenAI 兼容 Chat（OpenAI、Azure、Ollama 等） |
-| Resilience | 熔断 + 分层限流 L1/L2/L3（`memory` / `redis`） |
-| Metrics | Prometheus（HTTP / gRPC / resilience / AI） |
+| Module | Description |
+|--------|-------------|
+| HTTP | Gin wrapper, HTTP/2 over TLS, optional HTTP/3 |
+| gRPC | Server / Client with resilience interceptors |
+| AI | OpenAI-compatible Chat (OpenAI, Azure, Ollama, etc.) |
+| Resilience | Breaker + layered rate limits L1/L2/L3 (`memory` / `redis`) |
+| Metrics | Prometheus (HTTP / gRPC / resilience / AI) |
 
-## 快速开始
+## Quick start
 
-**新建工程（推荐）**
+**New project (recommended)**
 
 ```bash
 go install github.com/ymhhh/goblocks-cli/cmd/goblocks@latest
@@ -24,40 +24,44 @@ goblocks new my-service --module github.com/acme/my-service
 cd my-service && go mod tidy && go run .
 ```
 
-CLI 选项（`--demo`、`--with-grpc`、`--with-ai`）见 [goblocks-cli README](https://github.com/ymhhh/goblocks-cli)。
+CLI flags (`--demo`, `--with-grpc`, `--with-ai`): [goblocks-cli README](https://github.com/ymhhh/goblocks-cli).
 
-**已有工程接入**
+**Existing project**
 
 ```bash
 go get github.com/ymhhh/goblocks@latest
 ```
 
-最小 `main.go` 示例见 [包 API 参考 — app](packages.md#app)。
+Minimal `main.go`: [Package API — app](packages.md#app).
 
-配置示例见 [配置参考](configuration.md#完整示例)。
+Config example: [Configuration — full example](configuration.md#full-example). Rate limiting: [Chinese guide](zh/rate-limiting.md).
 
-## 文档目录
+## Documentation index
 
-| 文档 | 说明 |
-|------|------|
-| [架构设计](architecture.md) | 分层结构、依赖方向、**限流目录映射**、请求流转 |
-| [配置参考](configuration.md) | YAML 配置项、环境变量、各模块配置示例 |
-| [包 API 参考](packages.md) | `app`、`http`、`grpc`、`ai`、`resilience` 使用说明 |
-| [观测指标](metrics.md) | Prometheus 指标说明与 PromQL 示例 |
-| [分布式追踪](tracing.md) | OpenTelemetry 可选 hook |
-| [grpc-gateway](grpc-gateway.md) | REST 网关集成指南（可选） |
-| [开发指南](development.md) | 框架开发、测试与发布 |
-| [API 稳定性](stability.md) | 版本策略与兼容承诺 |
+| Doc | Description |
+|-----|-------------|
+| **[中文文档 / Chinese](zh/README.md)** | Full Chinese translations |
+| [Architecture](architecture.md) · [架构](zh/architecture.md) | Layering, dependencies, rate-limit layout, request flow |
+| [Configuration](configuration.md) · [配置](zh/configuration.md) | YAML, env vars, module examples |
+| [Package API](packages.md) · [包 API](zh/packages.md) | `app`, `http`, `grpc`, `ai`, `resilience` |
+| [Metrics](metrics.md) · [指标](zh/metrics.md) | Prometheus metrics and PromQL |
+| [Tracing](tracing.md) · [追踪](zh/tracing.md) | Optional OpenTelemetry hooks |
+| [grpc-gateway](grpc-gateway.md) · [网关](zh/grpc-gateway.md) | REST gateway integration (optional) |
+| [Development](development.md) · [开发](zh/development.md) | Framework dev, test, release |
+| [API stability](stability.md) · [稳定性](zh/stability.md) | Version policy and compatibility |
+| [Rate limiting (中文)](zh/rate-limiting.md) | L1/L2/L3 guide (Chinese only) |
+| [Quickstart (中文)](zh/quickstart.md) | Install and minimal example |
+| [CHANGELOG summary (中文)](zh/changelog.md) | Version notes in Chinese |
 
-## 快速链接
+## Links
 
-- 框架仓库：[goblocks](https://github.com/ymhhh/goblocks)
-- CLI 仓库：[goblocks-cli](https://github.com/ymhhh/goblocks-cli)
-- 参考示例：[ddd-onion-sample](https://github.com/ymhhh/ddd-onion-sample)
-- 安装框架：`go get github.com/ymhhh/goblocks@latest`
-- 安装 CLI：`go install github.com/ymhhh/goblocks-cli/cmd/goblocks@latest`
+- Framework: [goblocks](https://github.com/ymhhh/goblocks)
+- CLI: [goblocks-cli](https://github.com/ymhhh/goblocks-cli)
+- Reference: [ddd-onion-sample](https://github.com/ymhhh/ddd-onion-sample)
+- Install framework: `go get github.com/ymhhh/goblocks@latest`
+- Install CLI: `go install github.com/ymhhh/goblocks-cli/cmd/goblocks@latest`
 
-## 最低要求
+## Requirements
 
 - Go >= 1.22
-- 生成 HTTP/3 时需 TLS 证书与 UDP 端口可达
+- HTTP/3: TLS certificates and reachable UDP port

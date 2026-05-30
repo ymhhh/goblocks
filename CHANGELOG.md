@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+中文摘要见 [docs/zh/changelog.md](docs/zh/changelog.md).
+
+## [v0.3.1] - 2026-05-30
+
+### Added
+
+- Auto-mount L3 `RouteRateLimit` / `RouteUnaryServerInterceptor` when `resilience.rate_limit.routes` is configured
+- L3 tests: `http/middleware/ratelimit_test.go`, `TestPolicyAllowRoute`, `TestRouteUnaryServerInterceptor`
+- Chinese documentation under `docs/zh/` (quickstart, rate limiting guide, changelog summary)
+
+### Changed
+
+- Documentation: L3 mounting semantics, HTTP middleware order, configuration `routes` section
+
 ## [v0.3.0] - 2026-05-30
 
 ### Added
@@ -17,7 +31,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 
 - **Breaking:** `resilience.NewPolicyFromConfig` now returns `(*Policy, error)` (Redis backend requires valid `redis.addr`)
-- **Breaking:** `app.Run` mounts **L1 global rate limit + breaker only**; L2/L3 must be registered in business `infrastructure/registerHTTP` or gRPC interceptor chain
+- **Breaking:** `app.Run` mounts **L1 global rate limit + breaker**; L3 auto-mounts when `routes` configured; L2 must be registered in business `infrastructure/registerHTTP`
 - `resilience.rate_limit.rps` / `burst` deprecated in favor of `global.rps` / `global.burst` (legacy fields still mapped)
 - HTTP resilience middleware split: removed `http/middleware/resilience.go`; use `ratelimit.go` APIs (`Resilience` / `ResilienceWithBreaker` deprecated)
 - Documentation reorganized: layered rate-limit directory mapping in `docs/architecture.md`; README simplified
