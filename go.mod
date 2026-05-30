@@ -10,7 +10,7 @@ require (
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/sashabaranov/go-openai v1.41.2
 	github.com/sony/gobreaker v1.0.0
-	github.com/ymhhh/go-common v0.0.0-20260530084620-e2cfa3ea02af
+	github.com/ymhhh/go-common v0.0.0-20260530130855-4842ec94218f
 	golang.org/x/sync v0.20.0
 	golang.org/x/time v0.15.0
 	google.golang.org/grpc v1.81.1
@@ -48,6 +48,8 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
+	go.opentelemetry.io/otel v1.44.0 // indirect
+	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/arch v0.22.0 // indirect
@@ -59,3 +61,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
+
+replace github.com/ymhhh/go-common => ../go-common
