@@ -129,6 +129,15 @@ ai:
 |------|------|--------|------|
 | `level` | string | `info` | 日志级别（框架使用 `log/slog`） |
 
+## metrics
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `enabled` | bool | `true` | 是否采集并暴露 Prometheus 指标 |
+| `path` | string | `/metrics` | 指标 HTTP 路径 |
+
+详见 [观测指标](metrics.md)。
+
 ## 环境变量
 
 | 变量 | 覆盖字段 |
@@ -138,6 +147,7 @@ ai:
 | `GOBLOCKS_AI_API_KEY` | `ai.api_key` |
 | `GOBLOCKS_AI_BASE_URL` | `ai.base_url` |
 | `GOBLOCKS_LOG_LEVEL` | `log.level` |
+| `GOBLOCKS_METRICS_ENABLED` | `metrics.enabled` |
 
 ### 占位符展开
 

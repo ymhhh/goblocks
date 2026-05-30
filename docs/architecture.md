@@ -2,7 +2,7 @@
 
 ## 总体分层
 
-Goblocks 分为两层：**框架库**（本仓库）与 **业务服务**（脚手架生成）。
+Goblocks 分为两层：**框架库**（本仓库 [goblocks](https://github.com/ymhhh/goblocks)）与 **脚手架 CLI**（[goblocks-cli](https://github.com/ymhhh/goblocks-cli)），以及 **业务服务**（CLI 生成）。
 
 ```mermaid
 flowchart TB
@@ -67,9 +67,12 @@ goblocks/
 ├── http/         Gin 封装，TLS 下 H2，可选 H3（QUIC）
 ├── grpc/         gRPC Server/Client + Interceptor
 ├── ai/           OpenAI 兼容 Chat Client
+├── metrics/      Prometheus 观测指标
 ├── app/          统一启动、信号处理、优雅关闭
-└── cmd/goblocks/ CLI 脚手架
+└── docs/         说明文档
 ```
+
+脚手架 CLI 位于独立仓库 [goblocks-cli](https://github.com/ymhhh/goblocks-cli)（`cmd/goblocks` + `internal/scaffold`）。
 
 ## 请求流转
 

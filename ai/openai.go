@@ -3,9 +3,11 @@ package ai
 import (
 	"context"
 	"fmt"
+	"time"
 
 	openai "github.com/sashabaranov/go-openai"
 
+	"github.com/ymhhh/goblocks/metrics"
 	"github.com/ymhhh/goblocks/resilience"
 )
 
@@ -15,13 +17,15 @@ type OpenAIConfig struct {
 	APIKey  string
 	Model   string
 	Policy  *resilience.Policy
+	Metrics *metrics.Registry
 }
 
 // OpenAIClient implements Client using OpenAI-compatible APIs.
 type OpenAIClient struct {
-	client *openai.Client
-	model  string
-	policy *resilience.Policy
+	client  *openai.Client
+	model   string
+	policy  *resilience.Policy
+	metrics *metrics.Registry
 }
 
 // NewOpenAIClient creates an OpenAI-compatible client.
@@ -37,9 +41,10 @@ func NewOpenAIClient(cfg OpenAIConfig) *OpenAIClient {
 	}
 
 	return &OpenAIClient{
-		client: openai.NewClientWithConfig(config),
-		model:  model,
-		policy: cfg.Policy,
+		client:  openai.NewClientWithConfig(config),
+		model:   model,
+		policy:  cfg.Policy,
+		metrics: cfg.Metrics,
 	}
 }
 
@@ -48,6 +53,13 @@ func (c *OpenAIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse
 	model := req.Model
 	if model == "" {
 		model = c.model
+	}
+
+	start := time.Now()
+	record := func(result string) {
+		if c.metrics != nil {
+			c.metrics.ObserveAIRequest(model, result, time.Since(start))
+		}
 	}
 
 	messages := make([]openai.ChatCompletionMessage, len(req.Messages))
@@ -76,10 +88,17 @@ func (c *OpenAIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse
 	}
 
 	if c.policy == nil {
-		return doChat()
+		resp, err := doChat()
+		if err != nil {
+			record("error")
+			return nil, err
+		}
+		record("success")
+		return resp, nil
 	}
 
 	if err := c.policy.Allow(); err != nil {
+		record("rate_limited")
 		return nil, err
 	}
 
@@ -87,7 +106,13 @@ func (c *OpenAIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse
 		return doChat()
 	})
 	if err != nil {
+		if err == resilience.ErrCircuitOpen {
+			record("circuit_open")
+		} else {
+			record("error")
+		}
 		return nil, err
 	}
+	record("success")
 	return result.(*ChatResponse), nil
 }

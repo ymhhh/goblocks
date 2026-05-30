@@ -7,11 +7,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/ymhhh/goblocks/metrics"
 	"github.com/ymhhh/goblocks/resilience"
 )
 
+const grpcProtocol = "grpc"
+
 // UnaryServerInterceptor returns a gRPC unary server interceptor with resilience.
-func UnaryServerInterceptor(policy *resilience.Policy) grpc.UnaryServerInterceptor {
+func UnaryServerInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -24,6 +27,9 @@ func UnaryServerInterceptor(policy *resilience.Policy) grpc.UnaryServerIntercept
 
 		if err := policy.Allow(); err != nil {
 			if err == resilience.ErrRateLimited {
+				if m != nil {
+					m.RecordRateLimitRejected(grpcProtocol)
+				}
 				return nil, status.Error(codes.ResourceExhausted, "rate limit exceeded")
 			}
 			return nil, status.Error(codes.Unavailable, err.Error())
@@ -34,6 +40,9 @@ func UnaryServerInterceptor(policy *resilience.Policy) grpc.UnaryServerIntercept
 		})
 		if err != nil {
 			if err == resilience.ErrCircuitOpen {
+				if m != nil {
+					m.RecordCircuitBreakerRejected(grpcProtocol)
+				}
 				return nil, status.Error(codes.Unavailable, "circuit breaker is open")
 			}
 			return nil, err
@@ -43,7 +52,7 @@ func UnaryServerInterceptor(policy *resilience.Policy) grpc.UnaryServerIntercept
 }
 
 // UnaryClientInterceptor returns a gRPC unary client interceptor with resilience.
-func UnaryClientInterceptor(policy *resilience.Policy) grpc.UnaryClientInterceptor {
+func UnaryClientInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc.UnaryClientInterceptor {
 	return func(
 		ctx context.Context,
 		method string,
@@ -58,6 +67,9 @@ func UnaryClientInterceptor(policy *resilience.Policy) grpc.UnaryClientIntercept
 
 		if err := policy.Allow(); err != nil {
 			if err == resilience.ErrRateLimited {
+				if m != nil {
+					m.RecordRateLimitRejected(grpcProtocol)
+				}
 				return status.Error(codes.ResourceExhausted, "rate limit exceeded")
 			}
 			return status.Error(codes.Unavailable, err.Error())
@@ -68,6 +80,9 @@ func UnaryClientInterceptor(policy *resilience.Policy) grpc.UnaryClientIntercept
 		})
 		if err != nil {
 			if err == resilience.ErrCircuitOpen {
+				if m != nil {
+					m.RecordCircuitBreakerRejected(grpcProtocol)
+				}
 				return status.Error(codes.Unavailable, "circuit breaker is open")
 			}
 		}

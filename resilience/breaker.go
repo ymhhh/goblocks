@@ -12,6 +12,7 @@ type BreakerSettings struct {
 	MaxRequests uint32
 	Interval    time.Duration
 	Timeout     time.Duration
+	OnStateChange func(name string, from, to gobreaker.State)
 }
 
 // NewBreaker creates a circuit breaker with the given settings.
@@ -37,5 +38,6 @@ func NewBreaker(s BreakerSettings) *gobreaker.CircuitBreaker {
 		ReadyToTrip: func(counts gobreaker.Counts) bool {
 			return counts.ConsecutiveFailures >= 3
 		},
+		OnStateChange: s.OnStateChange,
 	})
 }

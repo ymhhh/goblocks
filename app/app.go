@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sony/gobreaker"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 
 	"github.com/ymhhh/goblocks/ai"
 	"github.com/ymhhh/goblocks/config"
@@ -18,8 +20,8 @@ import (
 	grpcinterceptors "github.com/ymhhh/goblocks/grpc/interceptors"
 	gblockshttp "github.com/ymhhh/goblocks/http"
 	httpmiddleware "github.com/ymhhh/goblocks/http/middleware"
+	"github.com/ymhhh/goblocks/metrics"
 	"github.com/ymhhh/goblocks/resilience"
-	"google.golang.org/grpc"
 )
 
 // HTTPRegisterFunc registers routes on the Gin engine.
@@ -32,6 +34,7 @@ type GRPCRegisterFunc func(server *grpc.Server, policy *resilience.Policy)
 type App struct {
 	cfg          *config.Config
 	policy       *resilience.Policy
+	metrics      *metrics.Registry
 	httpServer   *gblockshttp.Server
 	grpcServer   *gblocksgrpc.Server
 	aiClient     ai.Client
@@ -44,9 +47,25 @@ func New(cfg *config.Config) *App {
 	if cfg == nil {
 		cfg = config.Default()
 	}
+
+	var reg *metrics.Registry
+	if cfg.Metrics.Enabled {
+		reg = metrics.NewRegistry()
+	}
+
+	policy := resilience.NewPolicyFromConfig(cfg.Resilience, resilience.WithBreakerStateChange(func(name string, from, to gobreaker.State) {
+		if reg != nil {
+			reg.SetCircuitBreakerState(name, to)
+		}
+	}))
+	if reg != nil && policy.Breaker != nil {
+		reg.SetCircuitBreakerState("default", policy.Breaker.State())
+	}
+
 	return &App{
-		cfg:    cfg,
-		policy: resilience.NewPolicyFromConfig(cfg.Resilience),
+		cfg:     cfg,
+		policy:  policy,
+		metrics: reg,
 	}
 }
 
@@ -67,6 +86,11 @@ func (a *App) Policy() *resilience.Policy {
 	return a.policy
 }
 
+// Metrics returns the metrics registry, or nil when disabled.
+func (a *App) Metrics() *metrics.Registry {
+	return a.metrics
+}
+
 // AIClient returns the AI client, initializing it if enabled in config.
 func (a *App) AIClient() ai.Client {
 	if a.aiClient == nil && a.cfg.AI.Enabled {
@@ -75,6 +99,7 @@ func (a *App) AIClient() ai.Client {
 			APIKey:  a.cfg.AI.APIKey,
 			Model:   a.cfg.AI.Model,
 			Policy:  a.policy,
+			Metrics: a.metrics,
 		})
 	}
 	return a.aiClient
@@ -95,8 +120,20 @@ func (a *App) Run(ctx context.Context) error {
 		gin.SetMode(gin.ReleaseMode)
 		engine := gin.New()
 		engine.Use(gin.Recovery())
-		engine.Use(httpmiddleware.ResilienceWithBreaker(a.policy))
+		if a.metrics != nil {
+			engine.Use(a.metrics.HTTPMiddleware())
+		}
+		engine.Use(httpmiddleware.ResilienceWithBreaker(a.policy, a.metrics))
 		a.httpRegister(engine, a.policy)
+
+		if a.metrics != nil {
+			path := a.cfg.Metrics.Path
+			if path == "" {
+				path = "/metrics"
+			}
+			engine.GET(path, gin.WrapH(a.metrics.Handler()))
+			slog.Info("metrics endpoint enabled", "path", path)
+		}
 
 		a.httpServer = gblockshttp.NewServer(engine, gblockshttp.Config{
 			Addr: a.cfg.Server.HTTP.Addr,
@@ -122,8 +159,15 @@ func (a *App) Run(ctx context.Context) error {
 			return fmt.Errorf("grpc is enabled but no handler registered: call app.WithGRPC(registerGRPC) in infrastructure/run.go")
 		}
 
+		interceptors := []grpc.UnaryServerInterceptor{
+			grpcinterceptors.UnaryServerInterceptor(a.policy, a.metrics),
+		}
+		if a.metrics != nil {
+			interceptors = append([]grpc.UnaryServerInterceptor{a.metrics.GRPCUnaryServerInterceptor()}, interceptors...)
+		}
+
 		opts := []grpc.ServerOption{
-			grpc.UnaryInterceptor(grpcinterceptors.UnaryServerInterceptor(a.policy)),
+			grpc.ChainUnaryInterceptor(interceptors...),
 		}
 		a.grpcServer = gblocksgrpc.NewServer(gblocksgrpc.Config{
 			Addr: a.cfg.Server.GRPC.Addr,

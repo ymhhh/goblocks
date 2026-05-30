@@ -17,7 +17,7 @@ func TestResilienceRateLimit(t *testing.T) {
 	policy := resilience.NewPolicy(nil, resilience.NewLimiter(1, 1))
 
 	r := gin.New()
-	r.Use(Resilience(policy))
+	r.Use(Resilience(policy, nil))
 	r.GET("/test", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
@@ -37,7 +37,7 @@ func TestResilienceRateLimit(t *testing.T) {
 
 func TestResilienceNilPolicy(t *testing.T) {
 	r := gin.New()
-	r.Use(Resilience(nil))
+	r.Use(Resilience(nil, nil))
 	r.GET("/test", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
@@ -60,7 +60,7 @@ func TestResilienceWithBreakerOpen(t *testing.T) {
 	}
 
 	r := gin.New()
-	r.Use(ResilienceWithBreaker(policy))
+	r.Use(ResilienceWithBreaker(policy, nil))
 	r.GET("/test", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})

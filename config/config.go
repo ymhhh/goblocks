@@ -13,10 +13,11 @@ const envPrefix = "GOBLOCKS_"
 
 // Config holds the full application configuration.
 type Config struct {
-	Server      ServerConfig      `yaml:"server"`
-	Resilience  ResilienceConfig  `yaml:"resilience"`
-	AI          AIConfig          `yaml:"ai"`
-	Log         LogConfig         `yaml:"log"`
+	Server     ServerConfig     `yaml:"server"`
+	Resilience ResilienceConfig `yaml:"resilience"`
+	AI         AIConfig         `yaml:"ai"`
+	Log        LogConfig        `yaml:"log"`
+	Metrics    MetricsConfig    `yaml:"metrics"`
 }
 
 // ServerConfig holds HTTP and gRPC server settings.
@@ -83,6 +84,12 @@ type LogConfig struct {
 	Level string `yaml:"level"`
 }
 
+// MetricsConfig holds Prometheus metrics settings.
+type MetricsConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Path    string `yaml:"path"`
+}
+
 // Default returns a Config with sensible defaults.
 func Default() *Config {
 	return &Config{
@@ -122,6 +129,10 @@ func Default() *Config {
 		Log: LogConfig{
 			Level: "info",
 		},
+		Metrics: MetricsConfig{
+			Enabled: true,
+			Path:    "/metrics",
+		},
 	}
 }
 
@@ -159,6 +170,9 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv(envPrefix + "LOG_LEVEL"); v != "" {
 		cfg.Log.Level = v
+	}
+	if v := os.Getenv(envPrefix + "METRICS_ENABLED"); v != "" {
+		cfg.Metrics.Enabled = v == "true" || v == "1"
 	}
 }
 
