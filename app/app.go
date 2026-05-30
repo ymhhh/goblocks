@@ -130,6 +130,7 @@ func (a *App) Run(ctx context.Context) error {
 		}
 		engine.Use(httpmiddleware.ResilienceWithBreaker(a.policy, a.metrics))
 		a.httpRegister(engine, a.policy)
+		registerHealthRoutes(engine, a)
 
 		if a.metrics != nil {
 			path := a.cfg.Metrics.Path

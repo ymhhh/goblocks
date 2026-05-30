@@ -29,9 +29,17 @@ type ServerConfig struct {
 
 // HTTPConfig holds HTTP server settings.
 type HTTPConfig struct {
-	Addr string    `yaml:"addr" json:"addr"`
-	TLS  TLSConfig `yaml:"tls" json:"tls"`
-	H3   H3Config  `yaml:"h3" json:"h3"`
+	Addr   string       `yaml:"addr" json:"addr"`
+	TLS    TLSConfig    `yaml:"tls" json:"tls"`
+	H3     H3Config     `yaml:"h3" json:"h3"`
+	Health HealthConfig `yaml:"health" json:"health"`
+}
+
+// HealthConfig holds liveness/readiness probe settings.
+type HealthConfig struct {
+	Enabled       bool   `yaml:"enabled" json:"enabled"`
+	LivenessPath  string `yaml:"liveness_path" json:"liveness_path"`
+	ReadinessPath string `yaml:"readiness_path" json:"readiness_path"`
 }
 
 // TLSConfig holds TLS certificate settings.
@@ -98,6 +106,11 @@ func Default() *Config {
 				H3: H3Config{
 					Enabled: false,
 					Addr:    ":8443",
+				},
+				Health: HealthConfig{
+					Enabled:       true,
+					LivenessPath:  "/health",
+					ReadinessPath: "/ready",
 				},
 			},
 			GRPC: GRPCConfig{

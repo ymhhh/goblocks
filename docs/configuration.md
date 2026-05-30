@@ -66,6 +66,9 @@ logger:
 | `tls.key_file` | string | — | TLS 私钥路径 |
 | `h3.enabled` | bool | `false` | 启用 HTTP/3（需 TLS） |
 | `h3.addr` | string | `:8443` | HTTP/3 QUIC 监听地址 |
+| `health.enabled` | bool | `true` | 注册 `/health` 与 `/ready` 探针 |
+| `health.liveness_path` | string | `/health` | 存活探针路径 |
+| `health.readiness_path` | string | `/ready` | 就绪探针路径（检查熔断器与 gRPC 状态） |
 
 ### server.grpc
 
