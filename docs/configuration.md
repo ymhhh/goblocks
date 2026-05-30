@@ -52,7 +52,7 @@ log:
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `enabled` | bool | `true` | 是否启动 gRPC 服务 |
+| `enabled` | bool | `true` | 是否启动 gRPC 服务（需在 `infrastructure/run.go` 中调用 `WithGRPC(registerGRPC)`） |
 | `addr` | string | `:9090` | gRPC 监听地址 |
 
 > HTTP 与 gRPC 使用不同端口，不可合并为同一 listener。

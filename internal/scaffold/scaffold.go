@@ -80,8 +80,7 @@ func shouldSkipDir(rel string, opts Options) bool {
 func shouldSkipFile(rel string, opts Options) bool {
 	rel = filepath.ToSlash(rel)
 	if !opts.WithGRPC {
-		if strings.Contains(rel, "grpc_server") ||
-			strings.HasPrefix(rel, "proto/") ||
+		if strings.HasPrefix(rel, "proto/") ||
 			strings.HasPrefix(rel, "api/") {
 			return true
 		}

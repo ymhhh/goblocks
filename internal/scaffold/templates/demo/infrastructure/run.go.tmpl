@@ -34,13 +34,15 @@ func Run(configPath string) error {
 {{- end}}
 
 	gblocks = gblocks.WithHTTP(app.registerHTTP)
-{{- if .WithGRPC}}
 	if cfg.Server.GRPC.Enabled {
 		gblocks = gblocks.WithGRPC(app.registerGRPC)
 	}
-{{- end}}
 
-	slog.Info("starting service", "http", cfg.Server.HTTP.Addr)
+	if cfg.Server.GRPC.Enabled {
+		slog.Info("starting service", "http", cfg.Server.HTTP.Addr, "grpc", cfg.Server.GRPC.Addr)
+	} else {
+		slog.Info("starting service", "http", cfg.Server.HTTP.Addr)
+	}
 	return gblocks.Run(context.Background())
 }
 

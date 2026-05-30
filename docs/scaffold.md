@@ -26,7 +26,7 @@ goblocks new <output-dir> [flags]
 |------|------|
 | `--module` | Go module 路径（必填，如 `github.com/acme/my-service`） |
 | `--demo` | 生成 User Demo（含 Mock 仓储、HTTP `GET /users/:id`） |
-| `--with-grpc` | 生成 gRPC 健康检查注册 + `proto/user/v1/user.proto` 示例 |
+| `--with-grpc` | 额外生成 `proto/user/v1/user.proto` 示例（gRPC 健康检查默认已内置，配置 `grpc.enabled: true` 即可） |
 | `--with-ai` | 生成 AI Chat handler（`POST /ai/chat`）并启用 ai 配置 |
 
 ### 示例
@@ -86,14 +86,11 @@ my-service/
 │   └── handlers.go         # 用例包占位
 └── infrastructure/
     ├── app.go              # 组合根
-    └── run.go              # 启动与路由注册
+    ├── run.go              # 启动与路由注册
+    └── grpc_server.go      # gRPC 健康检查（grpc.enabled: true 时生效）
 ```
 
-`--with-grpc` 额外生成：
-
-```
-infrastructure/grpc_server.go   # gRPC 健康检查
-```
+`--with-grpc` 额外生成 `proto/user/v1/user.proto` 示例。
 
 ### Demo 工程（demo 模板）
 
@@ -106,14 +103,10 @@ domain/repo_user_mock.go
 domain/errors.go
 handlers/user_handler.go
 handlers/context.go
-```
-
-`--with-grpc` 额外生成：
-
-```
-proto/user/v1/user.proto
 infrastructure/grpc_server.go
 ```
+
+`--with-grpc` 额外生成 `proto/user/v1/user.proto`。
 
 `--with-ai` 额外生成：
 

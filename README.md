@@ -71,7 +71,7 @@ curl http://localhost:8080/users/1
 goblocks new [output-dir] \
   --module github.com/acme/my-service \  # Go module 路径
   --demo \                               # 生成 User Demo
-  --with-grpc \                          # 含 gRPC 健康检查 + proto 示例
+  --with-grpc \                          # 额外生成 proto 示例（gRPC 健康检查默认已内置）
   --with-ai                              # 含 AI Chat 端点
 ```
 

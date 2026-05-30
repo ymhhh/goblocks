@@ -117,7 +117,11 @@ func (a *App) Run(ctx context.Context) error {
 		slog.Info("http server started", "addr", a.httpServer.Addr())
 	}
 
-	if a.cfg.Server.GRPC.Enabled && a.grpcRegister != nil {
+	if a.cfg.Server.GRPC.Enabled {
+		if a.grpcRegister == nil {
+			return fmt.Errorf("grpc is enabled but no handler registered: call app.WithGRPC(registerGRPC) in infrastructure/run.go")
+		}
+
 		opts := []grpc.ServerOption{
 			grpc.UnaryInterceptor(grpcinterceptors.UnaryServerInterceptor(a.policy)),
 		}

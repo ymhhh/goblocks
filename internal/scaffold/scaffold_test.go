@@ -25,26 +25,27 @@ func TestGenerateEmpty(t *testing.T) {
 	checkFile(t, out, "go.mod")
 	checkFile(t, out, "config/config.yaml")
 	checkFile(t, out, "infrastructure/run.go")
-	checkNoFile(t, out, "infrastructure/grpc_server.go")
+	checkFile(t, out, "infrastructure/grpc_server.go")
 	checkNoFile(t, out, "core/user.go")
 }
 
-func TestGenerateEmptyWithGRPC(t *testing.T) {
+func TestGenerateDemoWithGRPCProto(t *testing.T) {
 	dir := t.TempDir()
-	out := filepath.Join(dir, "testsvc")
+	out := filepath.Join(dir, "demo-svc")
 
 	opts := Options{
-		OutputDir:  out,
-		ModulePath: "github.com/acme/testsvc",
-		ServiceName: "testsvc",
-		WithGRPC:   true,
+		OutputDir:   out,
+		ModulePath:  "github.com/acme/demo-svc",
+		ServiceName: "demo-svc",
+		Demo:        true,
+		WithGRPC:    true,
 	}
 
 	if err := Generate(opts); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFile(t, out, "infrastructure/grpc_server.go")
+	checkFile(t, out, "proto/user/v1/user.proto")
 }
 
 func TestGenerateDemo(t *testing.T) {

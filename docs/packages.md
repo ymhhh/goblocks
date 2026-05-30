@@ -198,7 +198,7 @@ func main() {
 |------|------|
 | `New(cfg)` | 创建 App，自动构建 Policy |
 | `WithHTTP(fn)` | 注册 HTTP 路由 |
-| `WithGRPC(fn)` | 注册 gRPC 服务（需 `server.grpc.enabled`） |
+| `WithGRPC(fn)` | 注册 gRPC 服务（`server.grpc.enabled: true` 时**必须**调用，否则启动失败） |
 | `Policy()` | 获取共享 Policy |
 | `AIClient()` | 获取 AI Client（lazy init） |
 | `Config()` | 获取配置 |
@@ -219,9 +219,16 @@ func Run(configPath string) error {
 
     gblocks := gblocksapp.New(cfg).WithHTTP(app.registerHTTP)
     if cfg.Server.GRPC.Enabled {
-        gblocks = gblocks.WithGRPC(app.registerGRPC)
+        gblocks = gblocks.WithGRPC(app.registerGRPC) // 必须显式注册
     }
     return gblocks.Run(context.Background())
+}
+
+// infrastructure/grpc_server.go
+func (a *App) registerGRPC(server *grpc.Server, _ *resilience.Policy) {
+    healthServer := health.NewServer()
+    grpc_health_v1.RegisterHealthServer(server, healthServer)
+    healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
 }
 ```
 
