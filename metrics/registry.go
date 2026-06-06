@@ -111,6 +111,14 @@ func (r *Registry) Handler() http.Handler {
 	return promhttp.HandlerFor(r.promRegistry, promhttp.HandlerOpts{})
 }
 
+// PromRegistry returns the underlying Prometheus registry for registering custom collectors.
+func (r *Registry) PromRegistry() *prometheus.Registry {
+	if r == nil {
+		return nil
+	}
+	return r.promRegistry
+}
+
 // RecordRateLimitRejected increments rate limit rejection counter.
 func (r *Registry) RecordRateLimitRejected(protocol, scope string) {
 	if r == nil {
