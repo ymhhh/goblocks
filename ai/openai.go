@@ -97,7 +97,7 @@ func (c *OpenAIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse
 		return resp, nil
 	}
 
-	if err := c.policy.Allow(); err != nil {
+	if err := c.policy.AllowGlobal(ctx); err != nil {
 		record("rate_limited")
 		return nil, err
 	}
