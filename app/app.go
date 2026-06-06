@@ -228,6 +228,9 @@ func (a *App) Run(ctx context.Context) error {
 		if len(a.policy.RateLimits.RouteRules) > 0 {
 			unaryInterceptors = append(unaryInterceptors, grpcinterceptors.RouteUnaryServerInterceptor(a.policy, a.metrics))
 		}
+		if a.policy.RateLimits.UserEnabled {
+			unaryInterceptors = append(unaryInterceptors, grpcinterceptors.UserUnaryServerInterceptor(a.policy, a.metrics))
+		}
 		if a.metrics != nil {
 			unaryInterceptors = append([]grpc.UnaryServerInterceptor{a.metrics.GRPCUnaryServerInterceptor()}, unaryInterceptors...)
 		}
@@ -237,6 +240,9 @@ func (a *App) Run(ctx context.Context) error {
 		}
 		if len(a.policy.RateLimits.RouteRules) > 0 {
 			streamInterceptors = append(streamInterceptors, grpcinterceptors.RouteStreamServerInterceptor(a.policy, a.metrics))
+		}
+		if a.policy.RateLimits.UserEnabled {
+			streamInterceptors = append(streamInterceptors, grpcinterceptors.UserStreamServerInterceptor(a.policy, a.metrics))
 		}
 
 		opts := append([]grpc.ServerOption{}, a.grpcTracing...)
