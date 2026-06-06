@@ -128,13 +128,13 @@ func (c RateLimitConfig) Normalized() RateLimitConfig {
 		out.Global.RPS = 100
 	}
 	if out.Global.Burst <= 0 {
-		out.Global.Burst = 200
+		out.Global.Burst = int(out.Global.RPS) * 2
 	}
 	if out.User.DefaultRPS <= 0 {
 		out.User.DefaultRPS = 20
 	}
 	if out.User.Burst <= 0 {
-		out.User.Burst = 40
+		out.User.Burst = int(out.User.DefaultRPS) * 2
 	}
 	if out.Redis.KeyPrefix == "" {
 		out.Redis.KeyPrefix = "goblocks:rl:"
