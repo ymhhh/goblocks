@@ -96,7 +96,12 @@ func RouteRateLimit(policy *resilience.Policy, m *metrics.Registry) gin.HandlerF
 			c.Next()
 			return
 		}
-		if err := policy.AllowRoute(c.Request.Context(), c.Request.Method, routePath(c)); err != nil {
+		p := routePath(c)
+		if p == "" {
+			c.Next()
+			return
+		}
+		if err := policy.AllowRoute(c.Request.Context(), c.Request.Method, p); err != nil {
 			if err == resilience.ErrRateLimited {
 				if m != nil {
 					m.RecordRateLimitRejected(httpProtocol, string(resilience.ScopeRoute))
@@ -176,8 +181,5 @@ func GinContextWithUserID(c *gin.Context, userID string) {
 }
 
 func routePath(c *gin.Context) string {
-	if p := c.FullPath(); p != "" {
-		return p
-	}
-	return c.Request.URL.Path
+	return c.FullPath()
 }
