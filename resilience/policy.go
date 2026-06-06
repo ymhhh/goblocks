@@ -42,6 +42,9 @@ func (p *Policy) AllowGlobal(ctx context.Context) error {
 
 // AllowUser checks L2 per-user rate limit when enabled.
 func (p *Policy) AllowUser(ctx context.Context, userKey string) error {
+	if p == nil {
+		return nil
+	}
 	if !p.RateLimits.UserEnabled || p.RateLimits.Backend == nil {
 		return nil
 	}
@@ -54,6 +57,9 @@ func (p *Policy) AllowUser(ctx context.Context, userKey string) error {
 // AllowRoute checks L3 per-route rate limit when a rule exists.
 // When method is empty (gRPC), path alone is used as the lookup key.
 func (p *Policy) AllowRoute(ctx context.Context, method, path string) error {
+	if p == nil {
+		return nil
+	}
 	if p.RateLimits.Backend == nil || len(p.RateLimits.RouteRules) == 0 {
 		return nil
 	}
