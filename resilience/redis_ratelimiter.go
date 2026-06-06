@@ -12,6 +12,7 @@ import (
 // RedisRateLimiter implements RateLimiter using Redis (cluster-safe).
 type RedisRateLimiter struct {
 	limiter *redis_rate.Limiter
+	client  *redis.Client
 	prefix  string
 }
 
@@ -35,6 +36,7 @@ func NewRedisRateLimiter(addr, keyPrefix string) (*RedisRateLimiter, error) {
 	}
 	return &RedisRateLimiter{
 		limiter: redis_rate.NewLimiter(client),
+		client:  client,
 		prefix:  keyPrefix,
 	}, nil
 }
@@ -51,4 +53,12 @@ func (r *RedisRateLimiter) Allow(ctx context.Context, key string, rule LimitRule
 		return false, err
 	}
 	return res.Allowed > 0, nil
+}
+
+// Close releases the Redis client connection pool.
+func (r *RedisRateLimiter) Close() error {
+	if r.client == nil {
+		return nil
+	}
+	return r.client.Close()
 }

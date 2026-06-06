@@ -304,6 +304,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 		logger.L().Info("grpc server stopped")
 	}
 
+	if a.policy != nil && a.policy.RateLimits.Backend != nil {
+		if closer, ok := a.policy.RateLimits.Backend.(interface{ Close() error }); ok {
+			if err := closer.Close(); err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+
 	select {
 	case <-ctx.Done():
 		if firstErr == nil {
