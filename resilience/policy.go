@@ -37,7 +37,7 @@ func (p *Policy) AllowGlobal(ctx context.Context) error {
 	if p == nil {
 		return nil
 	}
-	return p.allow(ctx, p.RateLimits.GlobalKey, p.RateLimits.GlobalRule, ScopeGlobal)
+	return p.allow(ctx, p.RateLimits.GlobalKey, p.RateLimits.GlobalRule)
 }
 
 // AllowUser checks L2 per-user rate limit when enabled.
@@ -48,7 +48,7 @@ func (p *Policy) AllowUser(ctx context.Context, userKey string) error {
 	if userKey == "" {
 		userKey = UserKeyFromContext(ctx)
 	}
-	return p.allow(ctx, userKey, p.RateLimits.UserRule, ScopeUser)
+	return p.allow(ctx, userKey, p.RateLimits.UserRule)
 }
 
 // AllowRoute checks L3 per-route rate limit when a rule exists.
@@ -61,10 +61,10 @@ func (p *Policy) AllowRoute(ctx context.Context, method, path string) error {
 	if !ok {
 		return nil
 	}
-	return p.allow(ctx, RouteKey(method, path), rule, ScopeRoute)
+	return p.allow(ctx, RouteKey(method, path), rule)
 }
 
-func (p *Policy) allow(ctx context.Context, key string, rule LimitRule, _ Scope) error {
+func (p *Policy) allow(ctx context.Context, key string, rule LimitRule) error {
 	if p == nil || p.RateLimits.Backend == nil {
 		return nil
 	}
