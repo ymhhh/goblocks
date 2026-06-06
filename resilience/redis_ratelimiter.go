@@ -44,8 +44,12 @@ func NewRedisRateLimiter(addr, keyPrefix string) (*RedisRateLimiter, error) {
 // Allow reports whether the request for key is allowed under rule.
 func (r *RedisRateLimiter) Allow(ctx context.Context, key string, rule LimitRule) (bool, error) {
 	rps, burst := normalizeRule(rule)
+	rate := int(rps)
+	if rate < 1 {
+		rate = 1
+	}
 	res, err := r.limiter.Allow(ctx, r.prefix+key, redis_rate.Limit{
-		Rate:   int(rps),
+		Rate:   rate,
 		Burst:  burst,
 		Period: time.Second,
 	})
