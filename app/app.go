@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sony/gobreaker"
@@ -279,7 +278,7 @@ func (a *App) Run(ctx context.Context) error {
 
 	<-ctx.Done()
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), a.cfg.Server.ShutdownTimeout)
 	defer shutdownCancel()
 
 	shutdownErr := a.Shutdown(shutdownCtx)

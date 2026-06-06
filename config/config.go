@@ -23,8 +23,9 @@ type Config struct {
 
 // ServerConfig holds HTTP and gRPC server settings.
 type ServerConfig struct {
-	HTTP HTTPConfig `yaml:"http" json:"http"`
-	GRPC GRPCConfig `yaml:"grpc" json:"grpc"`
+	HTTP            HTTPConfig    `yaml:"http" json:"http"`
+	GRPC            GRPCConfig    `yaml:"grpc" json:"grpc"`
+	ShutdownTimeout time.Duration `yaml:"shutdown_timeout" json:"shutdown_timeout"`
 }
 
 // HTTPConfig holds HTTP server settings.
@@ -162,6 +163,7 @@ type MetricsConfig struct {
 func Default() *Config {
 	return &Config{
 		Server: ServerConfig{
+			ShutdownTimeout: 30 * time.Second,
 			HTTP: HTTPConfig{
 				Addr: ":8080",
 				TLS: TLSConfig{
