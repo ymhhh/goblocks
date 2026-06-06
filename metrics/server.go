@@ -15,9 +15,6 @@ type Server struct {
 
 // NewServer creates a standalone metrics HTTP server.
 func NewServer(addr, path string, handler http.Handler, authToken string) *Server {
-	if path == "" {
-		path = "/metrics"
-	}
 	mux := http.NewServeMux()
 	mux.Handle(path, AuthWrap(authToken, handler))
 	return &Server{
