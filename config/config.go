@@ -70,6 +70,7 @@ type ResilienceConfig struct {
 
 // BreakerConfig holds circuit breaker settings.
 type BreakerConfig struct {
+	Enabled              bool          `yaml:"enabled" json:"enabled"`
 	MaxRequests          uint32        `yaml:"max_requests" json:"max_requests"`
 	ConsecutiveFailures  uint32        `yaml:"consecutive_failures" json:"consecutive_failures"`
 	Interval             time.Duration `yaml:"interval" json:"interval"`
@@ -186,6 +187,7 @@ func Default() *Config {
 		},
 		Resilience: ResilienceConfig{
 			Breaker: BreakerConfig{
+				Enabled:             true,
 				MaxRequests:         3,
 				ConsecutiveFailures: 3,
 				Interval:            60 * time.Second,

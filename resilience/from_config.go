@@ -1,6 +1,8 @@
 package resilience
 
 import (
+	"github.com/sony/gobreaker"
+
 	"github.com/ymhhh/goblocks/config"
 )
 
@@ -11,14 +13,17 @@ func NewPolicyFromConfig(cfg config.ResilienceConfig, opts ...PolicyOption) (*Po
 		opt(build)
 	}
 
-	breaker := NewBreaker(BreakerSettings{
-		Name:                "default",
-		MaxRequests:         cfg.Breaker.MaxRequests,
-		ConsecutiveFailures: cfg.Breaker.ConsecutiveFailures,
-		Interval:            cfg.Breaker.Interval,
-		Timeout:             cfg.Breaker.Timeout,
-		OnStateChange:       build.onBreakerStateChange,
-	})
+	var breaker *gobreaker.CircuitBreaker
+	if cfg.Breaker.Enabled {
+		breaker = NewBreaker(BreakerSettings{
+			Name:                "default",
+			MaxRequests:         cfg.Breaker.MaxRequests,
+			ConsecutiveFailures: cfg.Breaker.ConsecutiveFailures,
+			Interval:            cfg.Breaker.Interval,
+			Timeout:             cfg.Breaker.Timeout,
+			OnStateChange:       build.onBreakerStateChange,
+		})
+	}
 
 	backend, err := NewRateLimiterBackend(cfg.RateLimit)
 	if err != nil {
