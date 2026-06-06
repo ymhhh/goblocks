@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,7 @@ type App struct {
 	grpcServer    *gblocksgrpc.Server
 	metricsServer *metrics.Server
 	aiClient      ai.Client
+	aiClientOnce  sync.Once
 	httpRegister  HTTPRegisterFunc
 	grpcRegister  GRPCRegisterFunc
 	httpTracing   []gin.HandlerFunc
@@ -97,17 +99,19 @@ func (a *App) Metrics() *metrics.Registry {
 	return a.metrics
 }
 
-// AIClient returns the AI client, initializing it if enabled in config.
+// AIClient returns the AI client, initializing it lazily on first call.
 func (a *App) AIClient() ai.Client {
-	if a.aiClient == nil && a.cfg.AI.Enabled {
-		a.aiClient = ai.NewOpenAIClient(ai.OpenAIConfig{
-			BaseURL: a.cfg.AI.BaseURL,
-			APIKey:  a.cfg.AI.APIKey,
-			Model:   a.cfg.AI.Model,
-			Policy:  a.policy,
-			Metrics: a.metrics,
-		})
-	}
+	a.aiClientOnce.Do(func() {
+		if a.cfg.AI.Enabled {
+			a.aiClient = ai.NewOpenAIClient(ai.OpenAIConfig{
+				BaseURL: a.cfg.AI.BaseURL,
+				APIKey:  a.cfg.AI.APIKey,
+				Model:   a.cfg.AI.Model,
+				Policy:  a.policy,
+				Metrics: a.metrics,
+			})
+		}
+	})
 	return a.aiClient
 }
 
