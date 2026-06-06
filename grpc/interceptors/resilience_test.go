@@ -84,7 +84,7 @@ func TestRouteUnaryServerInterceptor(t *testing.T) {
 		RateLimits: resilience.RateLimits{
 			Backend: resilience.NewMemoryRateLimiter(),
 			RouteRules: map[string]resilience.LimitRule{
-				"GRPC:/test.Echo": {RPS: 1, Burst: 1},
+				"/test.Echo": {RPS: 1, Burst: 1},
 			},
 		},
 	}

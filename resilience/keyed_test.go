@@ -13,6 +13,14 @@ func TestRouteKey(t *testing.T) {
 	}
 }
 
+func TestRouteKeyGRPC(t *testing.T) {
+	got := RouteKey("", "/test.Echo")
+	want := "route:/test.Echo"
+	if got != want {
+		t.Fatalf("RouteKey = %q, want %q", got, want)
+	}
+}
+
 func TestGlobalKey(t *testing.T) {
 	if GlobalKey("") != "global" {
 		t.Fatalf("empty service: got %q", GlobalKey(""))

@@ -126,7 +126,7 @@ func RouteUnaryServerInterceptor(policy *resilience.Policy, m *metrics.Registry)
 		if policy == nil || len(policy.RateLimits.RouteRules) == 0 {
 			return handler(ctx, req)
 		}
-		if err := policy.AllowRoute(ctx, "GRPC", info.FullMethod); err != nil {
+		if err := policy.AllowRoute(ctx, "", info.FullMethod); err != nil {
 			return nil, rateLimitError(m, err, resilience.ScopeRoute)
 		}
 		return handler(ctx, req)
@@ -144,7 +144,7 @@ func RouteStreamServerInterceptor(policy *resilience.Policy, m *metrics.Registry
 		if policy == nil || len(policy.RateLimits.RouteRules) == 0 {
 			return handler(srv, ss)
 		}
-		if err := policy.AllowRoute(ss.Context(), "GRPC", info.FullMethod); err != nil {
+		if err := policy.AllowRoute(ss.Context(), "", info.FullMethod); err != nil {
 			return rateLimitError(m, err, resilience.ScopeRoute)
 		}
 		return handler(srv, ss)

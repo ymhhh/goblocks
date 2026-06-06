@@ -52,11 +52,17 @@ func (p *Policy) AllowUser(ctx context.Context, userKey string) error {
 }
 
 // AllowRoute checks L3 per-route rate limit when a rule exists.
+// When method is empty (gRPC), path alone is used as the lookup key.
 func (p *Policy) AllowRoute(ctx context.Context, method, path string) error {
 	if p.RateLimits.Backend == nil || len(p.RateLimits.RouteRules) == 0 {
 		return nil
 	}
-	key := strings.ToUpper(method) + ":" + path
+	var key string
+	if method == "" {
+		key = path
+	} else {
+		key = strings.ToUpper(method) + ":" + path
+	}
 	rule, ok := p.RateLimits.RouteRules[key]
 	if !ok {
 		return nil

@@ -35,7 +35,11 @@ func UserKeyFromContext(ctx context.Context) string {
 }
 
 // RouteKey builds an L3 key from HTTP method and path.
+// When method is empty (gRPC), only path is included.
 func RouteKey(method, path string) string {
+	if method == "" {
+		return routeKeyPrefix + path
+	}
 	return fmt.Sprintf("%s%s:%s", routeKeyPrefix, strings.ToUpper(method), path)
 }
 
