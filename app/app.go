@@ -47,7 +47,7 @@ type App struct {
 }
 
 // New creates a new App from configuration.
-func New(cfg *config.Config) *App {
+func New(cfg *config.Config) (*App, error) {
 	if cfg == nil {
 		cfg = config.Default()
 	}
@@ -63,7 +63,7 @@ func New(cfg *config.Config) *App {
 		}
 	}))
 	if err != nil {
-		panic(fmt.Sprintf("init policy: %v", err))
+		return nil, fmt.Errorf("init policy: %w", err)
 	}
 	if reg != nil && policy.Breaker != nil {
 		reg.SetCircuitBreakerState("default", policy.Breaker.State())
@@ -73,7 +73,7 @@ func New(cfg *config.Config) *App {
 		cfg:     cfg,
 		policy:  policy,
 		metrics: reg,
-	}
+	}, nil
 }
 
 // WithHTTP sets the HTTP route registration function.

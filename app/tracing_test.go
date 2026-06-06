@@ -12,7 +12,11 @@ import (
 )
 
 func TestWithHTTPTracing(t *testing.T) {
-	a := New(nil).WithHTTPTracing(func(c *gin.Context) {
+	a, err := New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.WithHTTPTracing(func(c *gin.Context) {
 		c.Next()
 	})
 	if len(a.httpTracing) != 1 {
@@ -21,16 +25,23 @@ func TestWithHTTPTracing(t *testing.T) {
 }
 
 func TestWithGRPCTracing(t *testing.T) {
-	a := New(nil).WithGRPCTracing(grpc.MaxRecvMsgSize(1024))
+	a, err := New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.WithGRPCTracing(grpc.MaxRecvMsgSize(1024))
 	if len(a.grpcTracing) != 1 {
 		t.Fatalf("expected 1 grpc tracing option, got %d", len(a.grpcTracing))
 	}
 }
 
 func TestHTTPTracingMiddlewareOrder(t *testing.T) {
+	a, err := New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var order []string
-
-	a := New(nil).WithHTTPTracing(func(c *gin.Context) {
+	a.WithHTTPTracing(func(c *gin.Context) {
 		order = append(order, "tracing")
 		c.Next()
 	})

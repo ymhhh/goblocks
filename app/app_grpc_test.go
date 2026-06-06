@@ -19,8 +19,11 @@ func TestGRPCRequiresRegistration(t *testing.T) {
 	cfg := config.Default()
 	cfg.Server.GRPC.Enabled = true
 
-	a := New(cfg)
-	err := a.Run(context.Background())
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = a.Run(context.Background())
 	if err == nil {
 		t.Fatal("expected error when grpc enabled without WithGRPC")
 	}
@@ -38,7 +41,11 @@ func TestGRPCWithExplicitRegistration(t *testing.T) {
 	cfg.Server.GRPC.Enabled = true
 	cfg.Server.GRPC.Addr = addr
 
-	a := New(cfg).WithGRPC(func(server *grpc.Server, _ *resilience.Policy) {
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.WithGRPC(func(server *grpc.Server, _ *resilience.Policy) {
 		healthServer := health.NewServer()
 		grpc_health_v1.RegisterHealthServer(server, healthServer)
 		healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)

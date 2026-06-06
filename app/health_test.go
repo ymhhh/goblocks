@@ -13,7 +13,10 @@ import (
 
 func TestHealthRoutes(t *testing.T) {
 	cfg := config.Default()
-	a := New(cfg)
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	engine := gin.New()
 	registerHealthRoutes(engine, a)
@@ -34,7 +37,10 @@ func TestHealthRoutes(t *testing.T) {
 func TestReadinessGRPCNotStarted(t *testing.T) {
 	cfg := config.Default()
 	cfg.Server.GRPC.Enabled = true
-	a := New(cfg)
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	a.grpcRegister = func(*grpc.Server, *resilience.Policy) {}
 
 	engine := gin.New()
@@ -50,7 +56,10 @@ func TestReadinessGRPCNotStarted(t *testing.T) {
 func TestHealthDisabled(t *testing.T) {
 	cfg := config.Default()
 	cfg.Server.HTTP.Health.Enabled = false
-	a := New(cfg)
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	engine := gin.New()
 	registerHealthRoutes(engine, a)

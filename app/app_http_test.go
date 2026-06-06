@@ -28,7 +28,11 @@ func TestHTTPL3RouteRateLimitAutoMount(t *testing.T) {
 		{Method: "POST", Path: "/ai/chat", RPS: 1, Burst: 1},
 	}
 
-	a := New(cfg).WithHTTP(func(e *gin.Engine, _ *resilience.Policy) {
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.WithHTTP(func(e *gin.Engine, _ *resilience.Policy) {
 		e.POST("/ai/chat", func(c *gin.Context) {
 			c.String(http.StatusOK, "ok")
 		})

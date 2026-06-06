@@ -48,11 +48,14 @@ func TestAppHTTPRegistration(t *testing.T) {
 func TestAppShutdown(t *testing.T) {
 	cfg := config.Default()
 	cfg.Server.GRPC.Enabled = false
-	a := New(cfg)
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	err := a.Shutdown(ctx)
+	err = a.Shutdown(ctx)
 	if err != nil && err != context.DeadlineExceeded {
 		t.Fatalf("unexpected shutdown error: %v", err)
 	}
@@ -63,7 +66,10 @@ func TestAppAIClient(t *testing.T) {
 	cfg.AI.Enabled = true
 	cfg.AI.APIKey = "test"
 
-	a := New(cfg)
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	client := a.AIClient()
 	if client == nil {
 		t.Fatal("expected ai client")
@@ -72,7 +78,10 @@ func TestAppAIClient(t *testing.T) {
 
 func TestAppPolicy(t *testing.T) {
 	cfg := config.Default()
-	a := New(cfg)
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if a.Policy() == nil {
 		t.Fatal("expected policy")
 	}
@@ -80,7 +89,10 @@ func TestAppPolicy(t *testing.T) {
 
 func TestAppConfig(t *testing.T) {
 	cfg := config.Default()
-	a := New(cfg)
+	a, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if a.Config() != cfg {
 		t.Fatal("expected config reference")
 	}
