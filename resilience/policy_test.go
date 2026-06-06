@@ -6,28 +6,14 @@ import (
 	"time"
 )
 
-func TestLimiterAllow(t *testing.T) {
-	l := NewLimiter(1, 1)
-	if !l.Allow() {
-		t.Fatal("first request should be allowed")
-	}
-	if l.Allow() {
-		t.Fatal("second request should be denied")
-	}
-}
-
-func TestLimiterWait(t *testing.T) {
-	l := NewLimiter(1, 1)
-	if err := l.Wait(); err != nil {
-		t.Fatal(err)
-	}
-	if err := l.Wait(); !errors.Is(err, ErrRateLimited) {
-		t.Fatalf("expected ErrRateLimited, got %v", err)
-	}
-}
-
 func TestPolicyAllow(t *testing.T) {
-	p := NewPolicy(nil, NewLimiter(1, 1))
+	p := &Policy{
+		RateLimits: RateLimits{
+			Backend:    NewMemoryRateLimiter(),
+			GlobalRule: LimitRule{RPS: 1, Burst: 1},
+			GlobalKey:  GlobalKey(""),
+		},
+	}
 	if err := p.Allow(); err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +23,7 @@ func TestPolicyAllow(t *testing.T) {
 }
 
 func TestPolicyExecute(t *testing.T) {
-	p := NewPolicy(nil, nil)
+	p := &Policy{}
 	result, err := p.Execute(func() (any, error) {
 		return "ok", nil
 	})
@@ -56,7 +42,7 @@ func TestBreakerOpensAfterFailures(t *testing.T) {
 		Interval:    time.Second,
 		Timeout:     time.Second,
 	})
-	p := NewPolicy(breaker, nil)
+	p := &Policy{Breaker: breaker}
 
 	fail := func() error {
 		return p.ExecuteVoid(func() error {

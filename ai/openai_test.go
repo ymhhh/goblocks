@@ -70,7 +70,13 @@ func TestOpenAIClientWithPolicy(t *testing.T) {
 	}))
 	defer server.Close()
 
-	policy := resilience.NewPolicy(nil, resilience.NewLimiter(100, 200))
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend:    resilience.NewMemoryRateLimiter(),
+			GlobalRule: resilience.LimitRule{RPS: 100, Burst: 200},
+			GlobalKey:  resilience.GlobalKey(""),
+		},
+	}
 	client := NewOpenAIClient(OpenAIConfig{
 		BaseURL: server.URL + "/",
 		APIKey:  "test-key",
@@ -89,7 +95,13 @@ func TestOpenAIClientWithPolicy(t *testing.T) {
 }
 
 func TestOpenAIClientRateLimited(t *testing.T) {
-	policy := resilience.NewPolicy(nil, resilience.NewLimiter(0.001, 1))
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend:    resilience.NewMemoryRateLimiter(),
+			GlobalRule: resilience.LimitRule{RPS: 0.001, Burst: 1},
+			GlobalKey:  resilience.GlobalKey(""),
+		},
+	}
 	client := NewOpenAIClient(OpenAIConfig{
 		BaseURL: "http://localhost:9999/",
 		APIKey:  "test",

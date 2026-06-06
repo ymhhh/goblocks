@@ -14,7 +14,13 @@ func init() {
 }
 
 func TestResilienceRateLimit(t *testing.T) {
-	policy := resilience.NewPolicy(nil, resilience.NewLimiter(1, 1))
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend:    resilience.NewMemoryRateLimiter(),
+			GlobalRule: resilience.LimitRule{RPS: 1, Burst: 1},
+			GlobalKey:  resilience.GlobalKey(""),
+		},
+	}
 
 	r := gin.New()
 	r.Use(Resilience(policy, nil))
@@ -51,7 +57,7 @@ func TestResilienceNilPolicy(t *testing.T) {
 
 func TestResilienceWithBreakerOpen(t *testing.T) {
 	breaker := resilience.NewBreaker(resilience.BreakerSettings{Name: "test"})
-	policy := resilience.NewPolicy(breaker, nil)
+	policy := &resilience.Policy{Breaker: breaker}
 
 	for i := 0; i < 3; i++ {
 		_, _ = policy.Execute(func() (any, error) {

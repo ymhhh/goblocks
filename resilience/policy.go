@@ -24,30 +24,7 @@ type RateLimits struct {
 // Policy combines rate limiting and circuit breaking.
 type Policy struct {
 	Breaker    *gobreaker.CircuitBreaker
-	Limiter    *Limiter // deprecated: single-bucket in-memory helper for tests
 	RateLimits RateLimits
-}
-
-// NewPolicy creates a Policy from optional breaker and legacy limiter.
-func NewPolicy(breaker *gobreaker.CircuitBreaker, limiter *Limiter) *Policy {
-	p := &Policy{
-		Breaker: breaker,
-		Limiter: limiter,
-	}
-	if limiter != nil {
-		p.RateLimits.Backend = &legacyLimiterAdapter{limiter: limiter}
-		p.RateLimits.GlobalRule = LimitRule{RPS: 100, Burst: 200}
-		p.RateLimits.GlobalKey = GlobalKey("")
-	}
-	return p
-}
-
-type legacyLimiterAdapter struct {
-	limiter *Limiter
-}
-
-func (a *legacyLimiterAdapter) Allow(_ context.Context, _ string, _ LimitRule) (bool, error) {
-	return a.limiter.Allow(), nil
 }
 
 // Allow checks the global (L1) rate limit for backward compatibility.

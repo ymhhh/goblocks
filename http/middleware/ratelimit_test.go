@@ -76,7 +76,13 @@ func TestRouteRateLimitNoRules(t *testing.T) {
 }
 
 func TestGlobalRateLimit(t *testing.T) {
-	policy := resilience.NewPolicy(nil, resilience.NewLimiter(1, 1))
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend:    resilience.NewMemoryRateLimiter(),
+			GlobalRule: resilience.LimitRule{RPS: 1, Burst: 1},
+			GlobalKey:  resilience.GlobalKey(""),
+		},
+	}
 
 	r := gin.New()
 	r.Use(GlobalRateLimit(policy, nil))
@@ -160,7 +166,7 @@ func TestBreakerCheckOpen(t *testing.T) {
 		Interval:            time.Minute,
 		Timeout:             time.Minute,
 	})
-	policy := resilience.NewPolicy(breaker, nil)
+	policy := &resilience.Policy{Breaker: breaker}
 	if err := policy.ExecuteVoid(func() error {
 		return errors.New("downstream error")
 	}); err == nil {

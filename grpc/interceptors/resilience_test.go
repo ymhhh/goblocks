@@ -17,7 +17,13 @@ func echoHandler(ctx context.Context, req any) (any, error) {
 }
 
 func TestUnaryServerInterceptor(t *testing.T) {
-	policy := resilience.NewPolicy(nil, resilience.NewLimiter(100, 200))
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend:    resilience.NewMemoryRateLimiter(),
+			GlobalRule: resilience.LimitRule{RPS: 100, Burst: 200},
+			GlobalKey:  resilience.GlobalKey(""),
+		},
+	}
 	interceptor := UnaryServerInterceptor(policy, nil)
 
 	handler := func(ctx context.Context, req any) (any, error) {
@@ -35,7 +41,13 @@ func TestUnaryServerInterceptor(t *testing.T) {
 }
 
 func TestUnaryServerInterceptorRateLimit(t *testing.T) {
-	policy := resilience.NewPolicy(nil, resilience.NewLimiter(1, 1))
+	policy := &resilience.Policy{
+		RateLimits: resilience.RateLimits{
+			Backend:    resilience.NewMemoryRateLimiter(),
+			GlobalRule: resilience.LimitRule{RPS: 1, Burst: 1},
+			GlobalKey:  resilience.GlobalKey(""),
+		},
+	}
 	interceptor := UnaryServerInterceptor(policy, nil)
 
 	handler := func(ctx context.Context, req any) (any, error) {
@@ -146,7 +158,7 @@ func TestUserUnaryServerInterceptorDisabled(t *testing.T) {
 }
 
 func TestUnaryClientInterceptor(t *testing.T) {
-	policy := resilience.NewPolicy(nil, nil)
+	policy := &resilience.Policy{}
 	interceptor := UnaryClientInterceptor(policy, nil)
 
 	invoker := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, opts ...grpc.CallOption) error {

@@ -1,6 +1,12 @@
 package resilience
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// ErrRateLimited is returned when the rate limiter rejects a request.
+var ErrRateLimited = errors.New("rate limit exceeded")
 
 // Scope identifies which rate-limit layer rejected a request.
 type Scope string
