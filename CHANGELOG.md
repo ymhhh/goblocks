@@ -4,6 +4,40 @@ All notable changes to this project are documented in this file.
 
 中文摘要见 [docs/zh/changelog.md](docs/zh/changelog.md).
 
+## [v0.3.2] - 2026-06-06
+
+### Breaking
+
+- `app.New(cfg)` now returns `(*App, error)` instead of `panic` on policy init failure
+- Removed deprecated `resilience.Limiter` type, `NewPolicy` constructor, `legacyLimiterAdapter`, and `Policy.Limiter` field; use `Policy.RateLimits` with `MemoryRateLimiter` directly
+
+### Added
+
+- gRPC stream interceptors: `StreamServerInterceptor`, `StreamClientInterceptor`, `UserStreamServerInterceptor`, `RouteStreamServerInterceptor` — streaming calls now get L1/L2/L3 rate limiting and circuit breaking
+- gRPC L2 user interceptors (`UserUnaryServerInterceptor` / `UserStreamServerInterceptor`) are now auto-wired in `app.Run` when `resilience.rate_limit.user.enabled: true`
+- Configurable graceful shutdown timeout via `server.shutdown_timeout` (default 30s)
+- Optional circuit breaker: `resilience.breaker.enabled` (default true)
+- `metrics.Registry.PromRegistry()` exposes the underlying `*prometheus.Registry` for custom collectors
+
+### Fixed
+
+- **Memory leak:** `MemoryRateLimiter` buckets grew without bound; added background eviction with configurable TTL (default 5m) and cleanup interval (default 1m)
+- **Connection leak:** `RedisRateLimiter` now has `Close()`, wired into `App.Shutdown`
+- **Data race:** `AIClient()` lazy init is now protected with `sync.Once`
+- `Policy.AllowUser` and `AllowRoute` now safely return nil when receiver is nil (consistent with `AllowGlobal`)
+- AI client now calls `AllowGlobal(ctx)` instead of `Allow()` to preserve trace context
+- gRPC client interceptors emit `grpc_client` protocol label (not `grpc`) for rate limit metrics
+- Redis rate limiter floors sub-1 RPS to 1 to avoid silent truncation (`int(0.5) == 0`)
+- Burst defaults are now consistently `RPS * 2` in both `config.Normalized()` and `normalizeRule`
+- gRPC route limit keys use the full method path directly (no more hardcoded `"GRPC"` pseudo-method)
+- L3 route rate limit middleware skips unregistered routes (`FullPath()` is empty)
+
+### Changed
+
+- Metrics path default `/metrics` is now set only in `app.go` (removed duplicate in `metrics/server.go`)
+- `Policy.allow()` no longer takes an unused `Scope` parameter
+- `config.RateLimitConfig.Normalized()` computes default burst from RPS instead of hardcoded values
+
 ## [v0.3.1] - 2026-05-30
 
 ### Added
