@@ -13,6 +13,7 @@ import (
 )
 
 const grpcProtocol = "grpc"
+const grpcClientProtocol = "grpc_client"
 
 const metadataUserID = "x-user-id"
 
@@ -188,7 +189,13 @@ func UnaryClientInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc
 		}
 
 		if err := policy.AllowGlobal(ctx); err != nil {
-			return rateLimitError(m, err, resilience.ScopeGlobal)
+			if err == resilience.ErrRateLimited {
+				if m != nil {
+					m.RecordRateLimitRejected(grpcClientProtocol, string(resilience.ScopeGlobal))
+				}
+				return status.Error(codes.ResourceExhausted, "rate limit exceeded")
+			}
+			return status.Error(codes.Unavailable, err.Error())
 		}
 
 		_, err := policy.Execute(func() (any, error) {
@@ -197,7 +204,7 @@ func UnaryClientInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc
 		if err != nil {
 			if err == resilience.ErrCircuitOpen {
 				if m != nil {
-					m.RecordCircuitBreakerRejected(grpcProtocol)
+					m.RecordCircuitBreakerRejected(grpcClientProtocol)
 				}
 				return status.Error(codes.Unavailable, "circuit breaker is open")
 			}
@@ -221,7 +228,13 @@ func StreamClientInterceptor(policy *resilience.Policy, m *metrics.Registry) grp
 		}
 
 		if err := policy.AllowGlobal(ctx); err != nil {
-			return nil, rateLimitError(m, err, resilience.ScopeGlobal)
+			if err == resilience.ErrRateLimited {
+				if m != nil {
+					m.RecordRateLimitRejected(grpcClientProtocol, string(resilience.ScopeGlobal))
+				}
+				return nil, status.Error(codes.ResourceExhausted, "rate limit exceeded")
+			}
+			return nil, status.Error(codes.Unavailable, err.Error())
 		}
 
 		result, err := policy.Execute(func() (any, error) {
@@ -230,7 +243,7 @@ func StreamClientInterceptor(policy *resilience.Policy, m *metrics.Registry) grp
 		if err != nil {
 			if err == resilience.ErrCircuitOpen {
 				if m != nil {
-					m.RecordCircuitBreakerRejected(grpcProtocol)
+					m.RecordCircuitBreakerRejected(grpcClientProtocol)
 				}
 				return nil, status.Error(codes.Unavailable, "circuit breaker is open")
 			}
