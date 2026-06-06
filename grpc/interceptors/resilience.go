@@ -48,6 +48,35 @@ func UnaryServerInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc
 	}
 }
 
+// StreamServerInterceptor returns a gRPC stream server interceptor with L1 global rate limit and breaker.
+func StreamServerInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc.StreamServerInterceptor {
+	return func(
+		srv any,
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		if policy == nil {
+			return handler(srv, ss)
+		}
+
+		if err := policy.AllowGlobal(ss.Context()); err != nil {
+			return rateLimitError(m, err, resilience.ScopeGlobal)
+		}
+
+		_, err := policy.Execute(func() (any, error) {
+			return nil, handler(srv, ss)
+		})
+		if err == resilience.ErrCircuitOpen {
+			if m != nil {
+				m.RecordCircuitBreakerRejected(grpcProtocol)
+			}
+			return status.Error(codes.Unavailable, "circuit breaker is open")
+		}
+		return err
+	}
+}
+
 // UserUnaryServerInterceptor applies L2 per-user rate limiting (requires x-user-id metadata or context user id).
 func UserUnaryServerInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc.UnaryServerInterceptor {
 	return func(
@@ -67,6 +96,25 @@ func UserUnaryServerInterceptor(policy *resilience.Policy, m *metrics.Registry) 
 	}
 }
 
+// UserStreamServerInterceptor applies L2 per-user rate limiting to streams.
+func UserStreamServerInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc.StreamServerInterceptor {
+	return func(
+		srv any,
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		if policy == nil || !policy.RateLimits.UserEnabled {
+			return handler(srv, ss)
+		}
+		ctx := userIDFromMetadata(ss.Context())
+		if err := policy.AllowUser(ctx, ""); err != nil {
+			return rateLimitError(m, err, resilience.ScopeUser)
+		}
+		return handler(srv, ss)
+	}
+}
+
 // RouteUnaryServerInterceptor applies L3 per-method rate limiting when configured.
 func RouteUnaryServerInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc.UnaryServerInterceptor {
 	return func(
@@ -82,6 +130,24 @@ func RouteUnaryServerInterceptor(policy *resilience.Policy, m *metrics.Registry)
 			return nil, rateLimitError(m, err, resilience.ScopeRoute)
 		}
 		return handler(ctx, req)
+	}
+}
+
+// RouteStreamServerInterceptor applies L3 per-method rate limiting to streams.
+func RouteStreamServerInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc.StreamServerInterceptor {
+	return func(
+		srv any,
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		if policy == nil || len(policy.RateLimits.RouteRules) == 0 {
+			return handler(srv, ss)
+		}
+		if err := policy.AllowRoute(ss.Context(), "GRPC", info.FullMethod); err != nil {
+			return rateLimitError(m, err, resilience.ScopeRoute)
+		}
+		return handler(srv, ss)
 	}
 }
 
@@ -137,5 +203,39 @@ func UnaryClientInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc
 			}
 		}
 		return err
+	}
+}
+
+// StreamClientInterceptor returns a gRPC stream client interceptor with resilience.
+func StreamClientInterceptor(policy *resilience.Policy, m *metrics.Registry) grpc.StreamClientInterceptor {
+	return func(
+		ctx context.Context,
+		desc *grpc.StreamDesc,
+		cc *grpc.ClientConn,
+		method string,
+		streamer grpc.Streamer,
+		opts ...grpc.CallOption,
+	) (grpc.ClientStream, error) {
+		if policy == nil {
+			return streamer(ctx, desc, cc, method, opts...)
+		}
+
+		if err := policy.AllowGlobal(ctx); err != nil {
+			return nil, rateLimitError(m, err, resilience.ScopeGlobal)
+		}
+
+		result, err := policy.Execute(func() (any, error) {
+			return streamer(ctx, desc, cc, method, opts...)
+		})
+		if err != nil {
+			if err == resilience.ErrCircuitOpen {
+				if m != nil {
+					m.RecordCircuitBreakerRejected(grpcProtocol)
+				}
+				return nil, status.Error(codes.Unavailable, "circuit breaker is open")
+			}
+			return nil, err
+		}
+		return result.(grpc.ClientStream), nil
 	}
 }

@@ -219,18 +219,26 @@ func (a *App) Run(ctx context.Context) error {
 			return fmt.Errorf("grpc is enabled but no handler registered: call app.WithGRPC(registerGRPC) in infrastructure/run.go")
 		}
 
-		interceptors := []grpc.UnaryServerInterceptor{
+		unaryInterceptors := []grpc.UnaryServerInterceptor{
 			grpcinterceptors.UnaryServerInterceptor(a.policy, a.metrics),
 		}
 		if len(a.policy.RateLimits.RouteRules) > 0 {
-			interceptors = append(interceptors, grpcinterceptors.RouteUnaryServerInterceptor(a.policy, a.metrics))
+			unaryInterceptors = append(unaryInterceptors, grpcinterceptors.RouteUnaryServerInterceptor(a.policy, a.metrics))
 		}
 		if a.metrics != nil {
-			interceptors = append([]grpc.UnaryServerInterceptor{a.metrics.GRPCUnaryServerInterceptor()}, interceptors...)
+			unaryInterceptors = append([]grpc.UnaryServerInterceptor{a.metrics.GRPCUnaryServerInterceptor()}, unaryInterceptors...)
+		}
+
+		streamInterceptors := []grpc.StreamServerInterceptor{
+			grpcinterceptors.StreamServerInterceptor(a.policy, a.metrics),
+		}
+		if len(a.policy.RateLimits.RouteRules) > 0 {
+			streamInterceptors = append(streamInterceptors, grpcinterceptors.RouteStreamServerInterceptor(a.policy, a.metrics))
 		}
 
 		opts := append([]grpc.ServerOption{}, a.grpcTracing...)
-		opts = append(opts, grpc.ChainUnaryInterceptor(interceptors...))
+		opts = append(opts, grpc.ChainUnaryInterceptor(unaryInterceptors...))
+		opts = append(opts, grpc.ChainStreamInterceptor(streamInterceptors...))
 		a.grpcServer = gblocksgrpc.NewServer(gblocksgrpc.Config{
 			Addr: a.cfg.Server.GRPC.Addr,
 		}, opts...)
